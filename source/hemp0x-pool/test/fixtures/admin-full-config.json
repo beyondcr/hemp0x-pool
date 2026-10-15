@@ -1,0 +1,42 @@
+{
+  "pool": {
+    "name": "TestPool",
+    "stratumPort": 3032,
+    "webPort": 8080,
+    "wallet": "R111111111111111111111111111111111",
+    "walletLabel": "testpool",
+    "fee": 0.01,
+    "rewardModel": "finder-plus-equal",
+    "finderBonusPercent": 20,
+    "activeWindowMinutes": 2,
+    "minActiveMinutes": 2,
+    "minPayout": 1,
+    "payoutInterval": 1800000,
+    "blockConfirmations": 100
+  },
+  "daemon": {
+    "host": "127.0.0.1",
+    "port": 42070,
+    "user": "TestUser",
+    "pass": "testpassword123",
+    "cliPath": "/usr/bin/hemp0x-cli",
+    "confPath": "/etc/hemp0x/hemp.conf"
+  },
+  "vardiff": {
+    "minDiff": 0.2,
+    "maxDiff": 1024,
+    "targetTime": 15,
+    "retargetTime": 90,
+    "variance": 0.3
+  },
+  "frontend": {
+    "poolName": "Test Hemp0x Pool",
+    "poolDescription": "Test Pool Description",
+    "discord": "https://discord.gg/test",
+    "twitter": "@testpool",
+    "historyHours": 4
+  },
+  "maintenance": {
+    "retentionDays": 14
+  }
+}

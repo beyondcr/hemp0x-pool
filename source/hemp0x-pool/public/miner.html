@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Miner Stats - Hemp0x Pool</title>
+    <link rel="icon" type="image/png" href="/logo.png">
+    <style>
+        :root {
+            --neon-green: #00ff41;
+            --soft-green: #7cff9b;
+            --line: rgba(0, 255, 65, 0.24);
+            --text: #e8ffe8;
+            --muted: rgba(232, 255, 232, 0.68);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+            background: #020202;
+            background-image: radial-gradient(rgba(0, 150, 0, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0, 255, 65, 0.04) 0%, transparent 60%);
+            animation: moveGlow 25s infinite linear;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes moveGlow {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(15%, 15%) rotate(180deg); }
+            100% { transform: translate(0, 0) rotate(360deg); }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            padding: 22px 20px;
+            background: linear-gradient(135deg, rgba(0, 45, 16, 0.88), rgba(2, 16, 8, 0.96));
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 16px 42px rgba(0, 0, 0, 0.28);
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .brand-link {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            color: inherit;
+            text-decoration: none;
+            min-width: 0;
+        }
+
+        .brand-link:focus-visible {
+            outline: 2px solid var(--neon-green);
+            outline-offset: 6px;
+            border-radius: 8px;
+        }
+
+        header img {
+            max-width: 68px;
+            filter: drop-shadow(0 0 12px rgba(0, 255, 65, 0.35));
+            transform: translateY(-4px);
+        }
+
+        .miner-title-block {
+            min-width: 0;
+        }
+
+        .pool-title {
+            color: #00ff41;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+            margin-bottom: 4px;
+        }
+
+        #walletDisplay {
+            color: #fff;
+            font-family: monospace;
+            font-size: 1rem;
+            overflow-wrap: anywhere;
+        }
+
+        .nav-link {
+            display: inline-block;
+            color: #7cff9b;
+            text-decoration: none;
+            font-weight: bold;
+            padding: 5px 15px;
+            border: 1px solid #00ff41;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .nav-link:hover {
+            background: rgba(0, 255, 65, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .nav-link:focus-visible {
+            outline: 2px solid var(--neon-green);
+            outline-offset: 2px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(180deg, rgba(4, 27, 11, 0.94), rgba(0, 11, 4, 0.94));
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 16px 42px rgba(0, 0, 0, 0.24);
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #7cff9b;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            color: #00ff41;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        .stat-note {
+            margin-top: 6px;
+            font-size: 0.7rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            opacity: 0.6;
+        }
+
+        .section {
+            background: linear-gradient(180deg, rgba(4, 27, 11, 0.9), rgba(0, 11, 4, 0.92));
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            color: #00ff41;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #005c2b;
+            padding-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(0, 255, 65, 0.1);
+        }
+
+        th {
+            background: #03270d;
+            color: var(--text);
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        tr:hover {
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .scroll-table {
+            overflow-x: auto;
+        }
+
+        .miner-message {
+            margin-top: 10px;
+            color: #ff6b6b;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .copy-tx {
+            background: linear-gradient(180deg, rgba(0, 92, 43, 0.95), rgba(0, 55, 22, 0.95));
+            color: var(--neon-green);
+            border: 1px solid var(--line);
+            padding: 4px 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.78rem;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+
+        .copy-tx.copied {
+            color: #fff;
+            border-color: #7cff9b;
+        }
+
+        .pulse-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .pulse-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .pulse-title {
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.8;
+        }
+
+        .pulse-range {
+            font-size: 0.8rem;
+            opacity: 0.6;
+        }
+
+        .pulse-wrap {
+            position: relative;
+            height: 220px;
+            border: 1px solid rgba(0, 255, 65, 0.4);
+            background: rgba(0, 5, 0, 0.85);
+            overflow: hidden;
+            border-radius: 8px;
+        }
+
+        .pulse-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .pulse-scan {
+            display: none;
+        }
+
+        .pulse-legend {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            opacity: 0.7;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .tab-bar {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0 10px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: rgba(0, 20, 0, 0.8);
+            border: 1px solid var(--neon-green);
+            color: var(--neon-green);
+            padding: 6px 14px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 6px;
+        }
+
+        .tab-btn.active {
+            background: rgba(0, 80, 0, 0.8);
+            box-shadow: 0 0 12px rgba(0, 255, 65, 0.25);
+        }
+
+        .tab-btn:focus-visible {
+            outline: 2px solid var(--neon-green);
+            outline-offset: 2px;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        @keyframes pulseScan {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(185%); }
+        }
+
+        @media (max-width: 720px) {
+            .container {
+                padding: 14px;
+            }
+
+            header {
+                grid-template-columns: 1fr;
+                padding: 16px 14px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+                gap: 12px;
+            }
+
+            .stat-card {
+                padding: 18px;
+            }
+
+            .stat-value {
+                font-size: 1.6em;
+            }
+
+            th,
+            td {
+                padding: 10px 8px;
+                font-size: 0.82rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+
+            .stat-card {
+                padding: 14px;
+            }
+
+            .section {
+                padding: 18px;
+            }
+
+            header img {
+                max-width: 58px;
+            }
+
+            .pool-title {
+                font-size: 1.05rem;
+                letter-spacing: 1px;
+            }
+
+            #walletDisplay {
+                font-size: 0.82rem;
+            }
+
+            .nav-link {
+                grid-column: 1 / -1;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="brand-link" aria-label="Hemp0x Pool home">
+                <img src="logo.png" alt="Hemp0x Pool">
+                <div class="miner-title-block">
+                    <div class="pool-title">Hemp0x Pool</div>
+                    <div id="walletDisplay">Loading Wallet...</div>
+                    <div id="minerMessage" class="miner-message" role="status" aria-live="polite"></div>
+                </div>
+            </a>
+            <a href="/" class="nav-link"><- Back to Pool Dashboard</a>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Current Hashrate</div>
+                <div class="stat-value" id="currentHashrate">0 MH/s</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Active Workers</div>
+                <div class="stat-value" id="workerCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Pending Shares</div>
+                <div class="stat-value" id="pendingShares">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Paid</div>
+                <div class="stat-value" id="totalPaid">0 HEMP</div>
+                <div class="stat-note" id="totalPaidNote">Payouts after 50 confirmations</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Blocks Found</div>
+                <div class="stat-value" id="blocksFound">0</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Hashrate History</h2>
+            <div class="pulse-panel">
+                <div class="pulse-header">
+                    <div class="pulse-title">Hashrate History</div>
+                    <div class="pulse-range" id="pulseRange">Last 4 Hours</div>
+                </div>
+                <div class="pulse-wrap">
+                    <canvas id="hashPulse" class="pulse-canvas"></canvas>
+                    <div class="pulse-scan"></div>
+                </div>
+                <div class="pulse-legend">
+                    <span>Min: <span id="pulseMin">0 MH/s</span></span>
+                    <span>Current: <span id="pulseCurrent">0 MH/s</span></span>
+                    <span>Max: <span id="pulsePeak">0 MH/s</span></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Activity (Last 100)</h2>
+            <div class="tab-bar">
+                <button class="tab-btn active" data-tab="tabAll">All</button>
+                <button class="tab-btn" data-tab="tabBlocks">Blocks Found</button>
+                <button class="tab-btn" data-tab="tabPayouts">Payouts</button>
+            </div>
+            <div class="scroll-table">
+                <div id="tabAll" class="tab-panel active">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Details</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="txRowsAll">
+                            <tr>
+                                <td colspan="5" style="text-align:center">No transactions yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="tabBlocks" class="tab-panel">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Height</th>
+                                <th>Hash</th>
+                                <th>Reward</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="txRowsBlocks">
+                            <tr>
+                                <td colspan="5" style="text-align:center">No blocks found yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="tabPayouts" class="tab-panel">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Txid</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="txRowsPayouts">
+                            <tr>
+                                <td colspan="5" style="text-align:center">No pool payouts yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Active Workers</h2>
+            <div id="workersTable">Loading workers...</div>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const address = urlParams.get('address');
+        document.getElementById('walletDisplay').textContent = address || 'No Address Provided';
+        const addressPattern = /^R[1-9A-HJ-NP-Za-km-z]{25,34}$/;
+
+        const pulseCanvas = document.getElementById('hashPulse');
+        const pulseMin = document.getElementById('pulseMin');
+        const pulseCurrent = document.getElementById('pulseCurrent');
+        const pulsePeak = document.getElementById('pulsePeak');
+
+        function calcHistoryHashrate(history) {
+            if (!Array.isArray(history)) return [];
+            return history.map(h => {
+                const diff = parseFloat(h.totalDiff || 0);
+                const hashesPerSecond = (diff * Math.pow(2, 32)) / 60;
+                return hashesPerSecond / 1000000;
+            });
+        }
+
+        function resample(values, targetCount) {
+            if (values.length <= targetCount) return values;
+            const step = values.length / targetCount;
+            const sampled = [];
+            for (let i = 0; i < targetCount; i++) {
+                const start = Math.floor(i * step);
+                const end = Math.max(start + 1, Math.floor((i + 1) * step));
+                const slice = values.slice(start, end);
+                const avg = slice.reduce((sum, v) => sum + v, 0) / slice.length;
+                sampled.push(avg);
+            }
+            return sampled;
+        }
+
+        function getScale(maxValue) {
+            const units = ['MH/s', 'GH/s', 'TH/s', 'PH/s'];
+            let unitIndex = 0;
+            let factor = 1;
+            let value = maxValue;
+            while (value >= 1000 && unitIndex < units.length - 1) {
+                value /= 1000;
+                factor *= 1000;
+                unitIndex++;
+            }
+            return { factor, unit: units[unitIndex] };
+        }
+
+        function formatScale(value, scale) {
+            const scaled = value / scale.factor;
+            const decimals = scaled >= 100 ? 0 : (scaled >= 10 ? 1 : 2);
+            return `${scaled.toFixed(decimals)} ${scale.unit}`;
+        }
+
+        function formatCompact(value, decimalsSmall) {
+            const num = Number(value) || 0;
+            const abs = Math.abs(num);
+            const units = [
+                { value: 1e9, suffix: 'B' },
+                { value: 1e6, suffix: 'M' },
+                { value: 1e3, suffix: 'k' }
+            ];
+            for (const unit of units) {
+                if (abs >= unit.value) {
+                    const scaled = num / unit.value;
+                    const decimals = Math.abs(scaled) >= 100 ? 0 : (Math.abs(scaled) >= 10 ? 1 : 2);
+                    return `${scaled.toFixed(decimals)}${unit.suffix}`;
+                }
+            }
+            if (decimalsSmall === 0) return Math.round(num).toString();
+            return num.toFixed(decimalsSmall).replace(/\.00$/, '');
+        }
+
+        function escapeHtml(value) {
+            return String(value === undefined || value === null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function setMinerMessage(message) {
+            const el = document.getElementById('minerMessage');
+            if (el) el.textContent = message || '';
+        }
+
+        function minerHasKnownActivity(stats) {
+            const financials = stats.financials || {};
+            return Number(stats.workerCount || 0) > 0 ||
+                Number(stats.blocksFoundCount || 0) > 0 ||
+                (stats.blocksFound || []).length > 0 ||
+                (stats.ledgerPayouts || []).length > 0 ||
+                (stats.history || []).length > 0 ||
+                Number(financials.totalPaid || 0) > 0 ||
+                Number(financials.pendingShares || 0) > 0;
+        }
+
+        function txDetailHtml(txid, fallback) {
+            if (!txid) return escapeHtml(fallback || 'Payout');
+            const shortTxid = `${txid.substring(0, 12)}...${txid.substring(txid.length - 8)}`;
+            return `<button class="copy-tx" type="button" data-copy="${escapeHtml(txid)}" title="Copy full txid">TX ${escapeHtml(shortTxid)}</button>`;
+        }
+
+        function payoutStatusLabel(status) {
+            const normalized = String(status || '').toLowerCase();
+            if (normalized === 'confirmed') return 'PAID';
+            if (normalized === 'broadcasted') return 'BROADCASTED';
+            return normalized ? normalized.toUpperCase() : '-';
+        }
+
+        function formatActivityTime(timestamp) {
+            if (!timestamp) return '-';
+            return new Date(timestamp).toLocaleString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+        }
+
+        function copyText(value, button) {
+            if (!value) return;
+            const done = () => {
+                if (!button) return;
+                const original = button.textContent;
+                button.textContent = 'Copied';
+                button.classList.add('copied');
+                setTimeout(() => {
+                    button.textContent = original;
+                    button.classList.remove('copied');
+                }, 1200);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(value).then(done).catch(() => {});
+            } else {
+                const input = document.createElement('textarea');
+                input.value = value;
+                input.style.position = 'fixed';
+                input.style.opacity = '0';
+                document.body.appendChild(input);
+                input.select();
+                try { document.execCommand('copy'); done(); } catch (_e) {}
+                input.remove();
+            }
+        }
+
+        function updatePulse(stats) {
+            if (!pulseCanvas) return;
+            const current = parseFloat(stats.currentHashrate || 0);
+            let values = calcHistoryHashrate(stats.history || []);
+            const width = pulseCanvas.clientWidth;
+            const height = pulseCanvas.clientHeight;
+            if (width === 0 || height === 0) return;
+
+            const targetBars = Math.max(40, Math.floor(width / 6));
+            values = resample(values, targetBars);
+            const maxValue = Math.max(current, ...values, 1);
+            const minValue = Math.min(current, ...values, maxValue);
+            const scale = getScale(maxValue);
+
+            const dpr = window.devicePixelRatio || 1;
+            pulseCanvas.width = width * dpr;
+            pulseCanvas.height = height * dpr;
+            const ctx = pulseCanvas.getContext('2d');
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            ctx.clearRect(0, 0, width, height);
+            ctx.fillStyle = 'rgba(0, 8, 0, 0.85)';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.strokeStyle = 'rgba(0, 255, 65, 0.15)';
+            ctx.lineWidth = 1;
+            for (let i = 1; i <= 4; i++) {
+                const y = (height / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+
+            const points = [];
+            values.forEach((value, i) => {
+                const x = values.length === 1 ? width / 2 : (i / (values.length - 1)) * width;
+                const y = height - ((value / maxValue) * (height - 24)) - 12;
+                points.push({ x, y });
+            });
+            if (points.length > 0) {
+                const area = ctx.createLinearGradient(0, 0, 0, height);
+                area.addColorStop(0, 'rgba(0, 255, 120, 0.28)');
+                area.addColorStop(1, 'rgba(0, 90, 30, 0.02)');
+
+                ctx.beginPath();
+                ctx.moveTo(points[0].x, height);
+                points.forEach((p) => ctx.lineTo(p.x, p.y));
+                ctx.lineTo(points[points.length - 1].x, height);
+                ctx.closePath();
+                ctx.fillStyle = area;
+                ctx.fill();
+
+                ctx.beginPath();
+                points.forEach((p, i) => {
+                    if (i === 0) ctx.moveTo(p.x, p.y);
+                    else ctx.lineTo(p.x, p.y);
+                });
+                ctx.strokeStyle = 'rgba(0, 255, 120, 0.95)';
+                ctx.lineWidth = 2;
+                ctx.shadowColor = 'rgba(0, 255, 65, 0.45)';
+                ctx.shadowBlur = 8;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+
+            ctx.fillStyle = 'rgba(245, 255, 245, 0.92)';
+            ctx.font = '13px ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
+            ctx.textBaseline = 'middle';
+            const labelCount = 5;
+            for (let i = 0; i < labelCount; i++) {
+                const ratio = i / (labelCount - 1);
+                const value = maxValue * ratio;
+                const y = height - ratio * (height - 16) - 8;
+                const label = formatScale(value, scale);
+                ctx.textAlign = 'left';
+                ctx.fillText(label, 6, y);
+                ctx.textAlign = 'right';
+                ctx.fillText(label, width - 6, y);
+            }
+
+            if (pulseMin) pulseMin.textContent = formatScale(minValue, scale);
+            if (pulseCurrent) pulseCurrent.textContent = formatScale(current, scale);
+            if (pulsePeak) pulsePeak.textContent = formatScale(maxValue, scale);
+        }
+
+        function updateStats() {
+            if (!address) {
+                setMinerMessage('No wallet address provided.');
+                return;
+            }
+            if (!addressPattern.test(address)) {
+                setMinerMessage('Invalid Hemp0x address.');
+                return;
+            }
+
+            fetch(`/miner/${address}/stats`)
+                .then(async r => {
+                    const data = await r.json().catch(() => ({}));
+                    if (!r.ok) {
+                        throw new Error(r.status === 400 ? 'Invalid Hemp0x address.' : 'Address not found on this pool yet.');
+                    }
+                    if (!minerHasKnownActivity(data)) {
+                        throw new Error('Address not found on this pool yet.');
+                    }
+                    return data;
+                })
+                .then(data => {
+                    setMinerMessage('');
+                    document.getElementById('currentHashrate').textContent = (parseFloat(data.currentHashrate) || 0).toFixed(2) + ' MH/s';
+                    document.getElementById('workerCount').textContent = data.workerCount || 0;
+                    const blocksCount = (data.blocksFoundCount !== undefined)
+                        ? data.blocksFoundCount
+                        : (data.blocksFound ? data.blocksFound.length : 0);
+                    document.getElementById('blocksFound').textContent = formatCompact(blocksCount, 0);
+                    document.getElementById('totalPaid').textContent = `${formatCompact(data.financials.totalPaid || 0, 2)} HEMP`;
+                    document.getElementById('pendingShares').textContent = (data.financials.pendingShares || 0).toFixed(2);
+                    if (data.blockConfirmations) {
+                        const paidNote = document.getElementById('totalPaidNote');
+                        if (paidNote) paidNote.textContent = `Payouts after ${data.blockConfirmations} confirmations`;
+                    }
+                    if (data.historyHours) {
+                        const pulseRange = document.getElementById('pulseRange');
+                        if (pulseRange) {
+                            const hours = Number(data.historyHours) || 1;
+                            pulseRange.textContent = `Last ${hours} Hour${hours === 1 ? '' : 's'}`;
+                        }
+                    }
+
+                    if (data.history) {
+                        updatePulse(data);
+                    }
+
+                    renderTransactions(data);
+                })
+                .catch(e => {
+                    setMinerMessage(e.message || 'Address not found on this pool yet.');
+                    document.getElementById('workersTable').innerHTML = '<p style="text-align:center;color:#ff6b6b;">No miner data found.</p>';
+                });
+
+            fetch(`/miner/${address}/workers`)
+                .then(r => r.json())
+                .then(workers => {
+                    if (workers.length === 0) {
+                        document.getElementById('workersTable').innerHTML = '<p style="text-align:center;color:var(--neon-green);">No active workers</p>';
+                        return;
+                    }
+
+                    let html = '<table><thead><tr><th>ID</th><th>Hashrate</th><th>Difficulty</th><th>Mode</th><th>Last Share</th></tr></thead><tbody>';
+                    workers.forEach(w => {
+                        const lastShare = new Date(w.lastShare).toLocaleString();
+                        const diff = parseFloat(w.difficulty || 0).toFixed(3);
+                        const mode = (w.mode || 'pool').toUpperCase();
+                        html += `<tr>
+                            <td>${w.id.split('.')[1] || 'default'}</td>
+                            <td>${w.hashrate} MH/s</td>
+                            <td>${diff}</td>
+                            <td>${mode}</td>
+                            <td>${lastShare}</td>
+                         </tr>`;
+                    });
+                    html += '</tbody></table>';
+                    document.getElementById('workersTable').innerHTML = html;
+                })
+                .catch(e => console.error('Workers error:', e));
+        }
+
+        function renderTransactions(data) {
+            const blocksRaw = (data.blocksFound || []);
+            const blocks = blocksRaw.map(b => ({
+                type: 'Block Found',
+                details: `#${b.height} ${b.hash ? b.hash.substring(0, 18) + '...' : ''}`.trim(),
+                amount: `${formatCompact(b.reward || 0, 2)} HEMP`,
+                status: (b.status || 'pending').toUpperCase(),
+                timestamp: b.timestamp
+            }));
+            const ledgerPayouts = (data.ledgerPayouts || [])
+                .filter(p => p.batch_status === 'broadcasted' || p.batch_status === 'confirmed')
+                .map(p => {
+                const hempAmount = Number(p.amount_sats || 0) / 100000000;
+                return {
+                    type: 'Pool Payout',
+                    details: txDetailHtml(p.txid, 'Payout'),
+                    amount: `${formatCompact(hempAmount, 2)} HEMP`,
+                    status: payoutStatusLabel(p.batch_status),
+                    timestamp: p.timestamp
+                };
+            });
+            const combined = blocks.concat(ledgerPayouts).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 100);
+
+            if (combined.length > 0) {
+                document.getElementById('txRowsAll').innerHTML = combined.map(row => `
+                    <tr>
+                        <td>${row.type}</td>
+                        <td style="font-family: monospace;">${row.details}</td>
+                        <td>${row.amount}</td>
+                        <td>${row.status}</td>
+                        <td>${formatActivityTime(row.timestamp)}</td>
+                    </tr>
+                `).join('');
+            } else {
+                document.getElementById('txRowsAll').innerHTML = '<tr><td colspan="5" style="text-align:center; opacity:0.5;">No transactions yet.</td></tr>';
+            }
+
+            if (blocksRaw.length > 0) {
+                document.getElementById('txRowsBlocks').innerHTML = blocksRaw.map(b => `
+                    <tr>
+                        <td>${b.height || '-'}</td>
+                        <td style="font-family: monospace;">${b.hash ? b.hash.substring(0, 24) + '...' : ''}</td>
+                        <td>${formatCompact(b.reward || 0, 2)} HEMP</td>
+                        <td>${(b.status || 'pending').toUpperCase()}</td>
+                        <td>${formatActivityTime(b.timestamp)}</td>
+                    </tr>
+                `).join('');
+            } else {
+                document.getElementById('txRowsBlocks').innerHTML = '<tr><td colspan="5" style="text-align:center; opacity:0.5;">No blocks found yet.</td></tr>';
+            }
+
+            const poolPayouts = ledgerPayouts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            if (poolPayouts.length > 0) {
+                document.getElementById('txRowsPayouts').innerHTML = poolPayouts.map(p => `
+                    <tr>
+                        <td>${p.type}</td>
+                        <td style="font-family: monospace;">${p.details}</td>
+                        <td>${p.amount}</td>
+                        <td>${p.status}</td>
+                        <td>${formatActivityTime(p.timestamp)}</td>
+                    </tr>
+                `).join('');
+            } else {
+                document.getElementById('txRowsPayouts').innerHTML = '<tr><td colspan="5" style="text-align:center; opacity:0.5;">No pool payouts yet.</td></tr>';
+            }
+        }
+
+        updateStats();
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+                btn.classList.add('active');
+                const target = document.getElementById(btn.dataset.tab);
+                if (target) target.classList.add('active');
+            });
+        });
+        document.addEventListener('click', (event) => {
+            const button = event.target.closest('.copy-tx');
+            if (button) copyText(button.dataset.copy, button);
+        });
+        setInterval(updateStats, 10000);
+    </script>
+</body>
+
+</html>

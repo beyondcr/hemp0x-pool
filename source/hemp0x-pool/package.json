@@ -1,0 +1,28 @@
+{
+  "name": "hemp0x-pool",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test",
+    "test:config": "node --test test/config.test.js",
+    "test:rpc": "node --test test/rpcClient.test.js",
+    "test:constants": "node --test test/constants.test.js",
+    "start": "node server.js",
+    "doctor": "node scripts/doctor.js",
+    "payout:plan": "node scripts/payout-worker.js --plan",
+    "payout:process": "node scripts/payout-worker.js --process",
+    "payout:confirm": "node scripts/payout-worker.js --confirm"
+  },
+  "keywords": ["hemp0x", "kawpow", "mining-pool", "stratum"],
+  "author": "Hemp0x contributors",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1",
+    "js-sha3": "^0.9.3",
+    "sqlite3": "^6.0.1"
+  },
+  "description": "KawPoW mining pool software for Hemp0x",
+  "engines": {
+    "node": ">=18"
+  }
+}

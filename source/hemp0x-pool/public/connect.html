@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect - Hemp0xPool</title>
+    <link rel="icon" type="image/png" href="/logo.png">
+    <style>
+        :root {
+            --neon-green: #00ff41;
+            --soft-green: #7cff9b;
+            --dark-green: #003300;
+            --bg-black: #020202;
+            --glass-bg: rgba(0, 20, 0, 0.85);
+            --line: rgba(0, 255, 65, 0.24);
+            --text: #e8ffe8;
+            --muted: rgba(232, 255, 232, 0.68);
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-black);
+            color: var(--neon-green);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+            margin: 0;
+            min-height: 100vh;
+            background-image: radial-gradient(rgba(0, 150, 0, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            overflow-x: hidden;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0, 255, 65, 0.04) 0%, transparent 60%);
+            animation: moveGlow 25s infinite linear;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes moveGlow {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(15%, 15%) rotate(180deg); }
+            100% { transform: translate(0, 0) rotate(360deg); }
+        }
+
+        .container {
+            width: min(94%, 1100px);
+            margin: 40px auto 60px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header h1 {
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px var(--neon-green);
+            margin: 0;
+        }
+
+        .back-link {
+            color: var(--neon-green);
+            text-decoration: none;
+            border-bottom: 1px solid var(--neon-green);
+            opacity: 0.8;
+            white-space: nowrap;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+        }
+
+        .panel {
+            background: linear-gradient(180deg, rgba(4, 27, 11, 0.94), rgba(0, 11, 4, 0.94));
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 16px 42px rgba(0, 0, 0, 0.28);
+        }
+
+        .panel-title {
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+            font-size: 0.95rem;
+        }
+
+        .grid {
+            display: grid;
+            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        }
+
+        .grid > div {
+            min-width: 0;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            opacity: 0.7;
+            margin-bottom: 6px;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            background: rgba(3, 20, 8, 0.96);
+            border: 1px solid var(--line);
+            color: var(--text);
+            padding: 10px;
+            font-family: inherit;
+            font-size: 1rem;
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2300ff41' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 32px;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: var(--neon-green);
+            box-shadow: 0 0 0 2px rgba(0, 255, 65, 0.15);
+        }
+
+        textarea {
+            height: 90px;
+            resize: vertical;
+        }
+
+        .code-block {
+            background: #000;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 12px 58px 12px 12px;
+            font-family: monospace;
+            color: var(--text);
+            margin: 8px 0;
+            position: relative;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .copy-btn {
+            position: absolute;
+            right: 8px;
+            top: 8px;
+            padding: 4px 10px;
+            font-size: 0.75em;
+            background: linear-gradient(180deg, rgba(0, 92, 43, 0.95), rgba(0, 55, 22, 0.95));
+            color: var(--neon-green);
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: #005500;
+        }
+
+        .copy-btn:focus-visible {
+            outline: 2px solid var(--neon-green);
+            outline-offset: 2px;
+        }
+
+        .note {
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 720px) {
+            .container {
+                width: min(94%, 1100px);
+                margin-top: 24px;
+                padding: 0 10px;
+            }
+
+            .header {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .panel {
+                padding: 18px;
+            }
+
+            .code-block {
+                font-size: 0.85rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 0 12px;
+            }
+
+            .panel {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Connect</h1>
+            <a class="back-link" href="/">&#60; Back to Pool</a>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">Stratum Details</div>
+            <div class="grid">
+                <div>
+                    <label>Stratum URL</label>
+                    <div class="code-block copy-block" id="stratumUrl" data-copy="stratum+tcp://127.0.0.1:3032">stratum+tcp://127.0.0.1:3032<button class="copy-btn" onclick="copyText('stratumUrl')">COPY</button></div>
+                </div>
+                <div>
+                    <label>Pool Password</label>
+                    <div class="code-block copy-block" id="poolPass" data-copy="x">x<button class="copy-btn" onclick="copyText('poolPass')">COPY</button></div>
+                </div>
+                <div>
+                    <label>Solo Password</label>
+                    <div class="code-block copy-block" id="soloPass" data-copy="s">s<button class="copy-btn" onclick="copyText('soloPass')">COPY</button></div>
+                </div>
+            </div>
+            <div class="note">Use password <strong>x</strong> for pool mining, <strong>s</strong> for solo mining.</div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">Auto Config Generator</div>
+            <div class="grid">
+                <div>
+                    <label>Wallet Address</label>
+                    <input id="walletInput" placeholder="RRd1...">
+                </div>
+                <div>
+                    <label>Worker Name</label>
+                    <input id="workerInput" placeholder="rig01">
+                </div>
+                <div>
+                    <label>Mode</label>
+                    <select id="modeSelect">
+                        <option value="x">Pool (x)</option>
+                        <option value="s">Solo (s)</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top:16px;">
+                <label>Connection Values</label>
+                <div class="code-block" id="connValues">URL: stratum+tcp://127.0.0.1:3032
+User: WALLET.WORKER
+Pass: x</div>
+                <label style="margin-top:12px;">Generic Command Template</label>
+                <div class="code-block copy-block" id="connCommand" data-copy="miner -a kawpow -o stratum+tcp://127.0.0.1:3032 -u WALLET.WORKER -p x">miner -a kawpow -o stratum+tcp://127.0.0.1:3032 -u WALLET.WORKER -p x<button class="copy-btn" onclick="copyText('connCommand')">COPY</button></div>
+                <div class="note">Replace <strong>miner</strong> with your software's command.</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">Pool vs Solo Mining</div>
+            <div class="note">
+                Pool mode (password <strong>x</strong>) shares block rewards with everyone currently active on the pool.
+                Solo mode (password <strong>s</strong>) pays the full block reward directly to your wallet if you find a block.
+            </div>
+            <div class="note">
+                Use pool mode for steadier rewards and solo mode when you want full block payouts.
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">Pool Payout Model</div>
+            <div class="code-block" id="payoutModel">
+                Loading payout details...
+            </div>
+            <div class="note">Finder bonus and shared rewards are configurable in the pool settings.</div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">Node Health</div>
+            <div class="grid">
+                <div>
+                    <label>Daemon RPC</label>
+                    <div class="code-block" id="daemonStatus">Checking...</div>
+                </div>
+                <div>
+                    <label>Block Height</label>
+                    <div class="code-block" id="blockHeight">--</div>
+                </div>
+                <div>
+                    <label>Web Uptime</label>
+                    <div class="code-block" id="webUptime">--</div>
+                </div>
+            </div>
+            <div class="note" id="daemonNote">Last checked: --</div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">Support the Pool</div>
+            <div class="code-block copy-block" id="donationAddress" data-copy="">Loading donation address...<button class="copy-btn" onclick="copyText('donationAddress')">COPY</button></div>
+            <div class="note">Mine or donate to the address above to support Hemp0xPool.</div>
+        </div>
+    </div>
+
+    <script>
+        const stratumUrlEl = document.getElementById('stratumUrl');
+        const poolPassEl = document.getElementById('poolPass');
+        const soloPassEl = document.getElementById('soloPass');
+        const connValuesEl = document.getElementById('connValues');
+        const connCommandEl = document.getElementById('connCommand');
+        const donationEl = document.getElementById('donationAddress');
+        const payoutModelEl = document.getElementById('payoutModel');
+        const daemonStatusEl = document.getElementById('daemonStatus');
+        const blockHeightEl = document.getElementById('blockHeight');
+        const webUptimeEl = document.getElementById('webUptime');
+        const daemonNoteEl = document.getElementById('daemonNote');
+        let currentStratumUrl = getStratumUrl();
+
+        function getStratumUrl() {
+            const host = window.location.hostname;
+            return `stratum+tcp://${host}:3032`;
+        }
+
+        function setCopyBlock(id, text) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = text;
+            el.dataset.copy = text;
+            const btn = document.createElement('button');
+            btn.className = 'copy-btn';
+            btn.type = 'button';
+            btn.textContent = 'COPY';
+            btn.addEventListener('click', () => copyText(id));
+            el.appendChild(btn);
+        }
+
+        function copyText(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const text = el.dataset.copy || el.innerText.replace(/\s+COPY$/, '').trim();
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text);
+            }
+        }
+
+        function updateGenerated() {
+            const wallet = document.getElementById('walletInput').value.trim() || 'WALLET';
+            const worker = document.getElementById('workerInput').value.trim();
+            const pass = document.getElementById('modeSelect').value;
+            const user = worker ? `${wallet}.${worker}` : wallet;
+            const url = currentStratumUrl || getStratumUrl();
+            connValuesEl.textContent = `URL: ${url}\nUser: ${user}\nPass: ${pass}`;
+            setCopyBlock('connCommand', `miner -a kawpow -o ${url} -u ${user} -p ${pass}`);
+        }
+
+        async function loadInfo() {
+            try {
+                const res = await fetch('/connect-info');
+                const info = await res.json();
+                const url = info.stratum || getStratumUrl();
+                currentStratumUrl = url;
+                setCopyBlock('stratumUrl', url);
+                setCopyBlock('poolPass', info.poolPass || 'x');
+                setCopyBlock('soloPass', info.soloPass || 's');
+                setCopyBlock('donationAddress', info.donationAddress || 'Unavailable');
+                if (payoutModelEl) {
+                    const finderBonus = (info.finderBonusPercent !== undefined) ? Number(info.finderBonusPercent) : 0;
+                    const activeWindow = (info.activeWindowMinutes !== undefined) ? Number(info.activeWindowMinutes) : 30;
+                    const minActive = (info.minActiveMinutes !== undefined) ? Number(info.minActiveMinutes) : 0;
+                    const fee = (info.poolFeePercent !== undefined) ? Number(info.poolFeePercent) : 0;
+                    const rewardModel = (info.rewardModel !== undefined) ? info.rewardModel : 'finder-plus-equal';
+                    const minActiveLine = minActive > 0
+                        ? `Minimum active time: ${minActive} min before sharing\n`
+                        : 'Minimum active time: immediate for valid active miners\n';
+                    let splitLine;
+                    if (rewardModel === 'pplns') {
+                        const pplnsDiff = (info.pplnsWindowDifficulty !== undefined) ? Number(info.pplnsWindowDifficulty) : null;
+                        const diffText = pplnsDiff ? ` (${pplnsDiff} difficulty units)` : '';
+                        splitLine = `Shared remainder: PPLNS rolling-window share-difficulty snapshots${diffText} (beta/testing, not recommended for production)\n`;
+                    } else if (rewardModel === 'finder-plus-share-weighted') {
+                        splitLine = `Shared remainder: proportional split by share difficulty across miners active in the last ${activeWindow} min\n`;
+                    } else {
+                        splitLine = `Shared remainder: equal split across miners active in the last ${activeWindow} min\n`;
+                    }
+                    payoutModelEl.innerText =
+                        `Reward model: ${rewardModel}\n` +
+                        `Finder bonus: ${finderBonus.toFixed(2)}%\n` +
+                        splitLine +
+                        minActiveLine +
+                        `Pool fee: ${fee.toFixed(2)}%`;
+                }
+                if (info.health) {
+                    const ok = info.health.daemonOk;
+                    daemonStatusEl.innerText = ok ? 'OK' : 'ERROR';
+                    daemonStatusEl.style.color = ok ? '#7cff9b' : '#ff5c5c';
+                    blockHeightEl.innerText = info.health.blockHeight || 0;
+                    const uptime = Number(info.health.webUptimeSec || 0);
+                    const hours = Math.floor(uptime / 3600);
+                    const minutes = Math.floor((uptime % 3600) / 60);
+                    webUptimeEl.innerText = `${hours}h ${minutes}m`;
+                    const checked = info.health.lastChecked ? new Date(info.health.lastChecked).toLocaleString() : 'Unknown';
+                    const note = ok ? `Last checked: ${checked}` : `Last checked: ${checked} (${info.health.error || 'RPC error'})`;
+                    daemonNoteEl.innerText = note;
+                }
+            } catch (e) {
+                currentStratumUrl = getStratumUrl();
+                setCopyBlock('stratumUrl', currentStratumUrl);
+                setCopyBlock('donationAddress', 'Unavailable');
+                if (payoutModelEl) {
+                    payoutModelEl.innerText = 'Unavailable';
+                }
+                daemonStatusEl.innerText = 'Unavailable';
+                blockHeightEl.innerText = '--';
+                webUptimeEl.innerText = '--';
+                daemonNoteEl.innerText = 'Last checked: --';
+            }
+            updateGenerated();
+        }
+
+        document.getElementById('walletInput').addEventListener('input', updateGenerated);
+        document.getElementById('workerInput').addEventListener('input', updateGenerated);
+        document.getElementById('modeSelect').addEventListener('change', updateGenerated);
+
+        loadInfo();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,29 @@
+# Runtime and dependency output
+node_modules/
+*.log
+*.pid
+*.sock
+
+# Databases
+*.db
+*.db-*
+*.db.*
+*.sqlite
+*.sqlite3
+
+# Secrets and live configs
+config.json
+config.json.*
+*.env
+.env*
+hemp.conf
+hemp0x.conf
+raven.conf
+.cookie
+
+# Production backup/snapshot files
+*.bak
+*.bak_*
+*.pre-*
+*.pre_*
+**/backups/

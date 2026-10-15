@@ -1,0 +1,114 @@
+{
+  "pool": {
+    "name": "Hemp0x Mining Pool",
+    "stratumPort": 3032,
+    "webPort": 8080,
+    "maxStratumConnections": 256,
+    "maxStratumLineBytes": 65536,
+    "maxPendingShareValidations": 8,
+    "maxConcurrentShareValidations": 256,
+    "maxWorkers": 10000,
+    "workerRetentionMs": 1800000,
+    "templateRefreshIntervalMs": 1000,
+    "submitBlockRpcTimeoutMs": 15000,
+    "submitBlockRetries": 2,
+    "submitBlockRetryDelayMs": 1000,
+    "wallet": "YOUR_POOL_WALLET_ADDRESS",
+    "walletLabel": "hemp0xpool",
+    "hashrateScalar": 1100,
+    "fee": 0,
+    "rewardModel": "finder-plus-equal",
+    "finderBonusPercent": 20,
+    "pplnsWindowDifficulty": 2000,
+    "activeWindowMinutes": 30,
+    "minActiveMinutes": 0,
+    "minPayout": 1,
+    "payoutInterval": 1800000,
+    "flushIntervalMs": 43200000,
+    "flushMinPayout": 0.1,
+    "blockConfirmations": 100
+  },
+  "daemon": {
+    "host": "127.0.0.1",
+    "port": 42070,
+    "useCookieAuth": true,
+    "cookiePath": "/var/lib/hemp0x-pool/rpc.cookie",
+    "cliPath": "/path/to/hemp0x-cli",
+    "confPath": "/path/to/hemp0x.conf"
+  },
+  "vardiff": {
+    "minDiff": 0.2,
+    "maxDiff": 1024,
+    "targetTime": 15,
+    "retargetTime": 30,
+    "variance": 0.4
+  },
+  "frontend": {
+    "poolName": "Hemp0x Pool",
+    "poolDescription": "Premium KawPoW Mining Pool",
+    "discord": "https://discord.gg/hemp0x",
+    "twitter": "@hemp0x",
+    "historyHours": 4
+  },
+  "maintenance": {
+    "retentionDays": 14
+  },
+  "payout": {
+    "dryRun": true,
+    "staleLockTimeoutMs": 3600000,
+    "blockConfirmations": 100,
+    "maxPayoutBatch": 50,
+    "maxPayoutBatchAmountSats": 50000000000,
+    "maxPayoutPerAddressSats": 50000000000,
+    "flushIntervalMs": 43200000,
+    "flushMinPayoutSats": 10000000,
+    "batchBroadcastMaxRetries": 3,
+    "batchBroadcastBackoffMs": [300000, 900000, 3600000],
+    "payoutRunTimeoutMs": 1800000,
+    "sharePaidAfterConfirmed": true,
+    "rpcDelayMs": 500,
+    "rpcTransientRetries": 2,
+    "rpcTransientBackoffMs": 2000
+  },
+  "consolidation": {
+    "enabled": false,
+    "dryRunOnly": true,
+    "minConfirmations": 100,
+    "maxInputsPerBatch": 200,
+    "maxTxSizeBytes": 80000,
+    "feeRateSatsPerByte": 10,
+    "useSmartFeeEstimate": true,
+    "smartFeeConfirmTarget": 6,
+    "destinationAddress": "",
+    "reservePolicy": {
+      "minUtxosToKeep": 500,
+      "maxUtxoSizeToKeepSats": 2000000000,
+      "minTotalReserveSats": 200000000000
+    },
+    "autoRunIntervalMs": 0,
+    "operatorApprovalRequired": true,
+    "broadcastMaxRetries": 3,
+    "broadcastBackoffMs": [300000, 900000, 3600000]
+  },
+  "health": {
+    "utxoReportIntervalMs": 86400000,
+    "maturityConfirmations": 100,
+    "warnUtxoCountAbove": 10000,
+    "warnUtxoCountBelow": 100,
+    "warnBalanceBelowSats": 100000000000,
+    "warnDustUtxoCountAbove": 500,
+    "dbIntegrityCheckIntervalMs": 86400000
+  },
+  "automation": {
+    "readOnlyChecksEnabled": true,
+    "dryRunPlanningEnabled": true,
+    "routinePayoutEnabled": false,
+    "payoutBroadcastEnabled": false,
+    "consolidationBroadcastEnabled": false,
+    "staleLockRecoveryEnabled": true,
+    "staleLockTimeoutMs": 3600000,
+    "maxConsecutiveFailures": 5,
+    "alertOnState": ["failed", "stale_lock", "balance_low", "db_integrity_fail"],
+    "logLevel": "info"
+  }
+}

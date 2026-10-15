@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hemp0xPool</title>
+    <link rel="icon" type="image/png" href="/logo.png">
+        <style>
+        :root {
+            --neon-green: #00ff41;
+            --soft-green: #7cff9b;
+            --dark-green: #003300;
+            --panel-green: #041b0b;
+            --bg-black: #020202;
+            --glass-bg: rgba(0, 20, 0, 0.85);
+            --line: rgba(0, 255, 65, 0.24);
+            --text: #e8ffe8;
+            --muted: rgba(232, 255, 232, 0.68);
+        }
+
+        body {
+            background-color: var(--bg-black);
+            color: var(--neon-green);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-image: radial-gradient(rgba(0, 150, 0, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            overflow-x: hidden;
+        }
+
+        /* Fluid Background */
+        body::after {
+            content: "";
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0, 255, 65, 0.04) 0%, transparent 60%);
+            animation: moveGlow 25s infinite linear;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes moveGlow {
+            0% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+
+            50% {
+                transform: translate(15%, 15%) rotate(180deg);
+            }
+
+            100% {
+                transform: translate(0, 0) rotate(360deg);
+            }
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            z-index: 20;
+            padding-bottom: 50px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            text-align: left;
+            margin-top: 40px;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+        }
+
+        .brand-link {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            color: inherit;
+            text-decoration: none;
+            min-width: 0;
+        }
+
+        .brand-link:focus-visible {
+            outline: 2px solid var(--neon-green);
+            outline-offset: 6px;
+            border-radius: 8px;
+        }
+
+        .logo {
+            width: 82px;
+            filter: drop-shadow(0 0 12px rgba(0, 255, 65, 0.35));
+            flex: 0 0 auto;
+            transform: translateY(-6px);
+        }
+
+        h1 {
+            margin: 0;
+            letter-spacing: 3px;
+            text-shadow: 0 0 10px var(--neon-green);
+            text-transform: uppercase;
+        }
+
+        .tagline {
+            letter-spacing: 2px;
+            opacity: 0.7;
+            margin-top: 8px;
+        }
+
+        .search-box {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .lookup-message {
+            flex-basis: 100%;
+            min-height: 1.2rem;
+            color: #7cff9b;
+            font-size: 0.9rem;
+            text-align: center;
+            opacity: 0.8;
+        }
+
+        .lookup-message.error {
+            color: #ff6b6b;
+            text-shadow: none;
+        }
+
+        input {
+            background: rgba(3, 20, 8, 0.96);
+            border: 1px solid var(--line);
+            color: var(--text);
+            padding: 12px;
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+            outline: none;
+            font-family: inherit;
+            font-size: 1.1em;
+            border-radius: 8px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--neon-green);
+            box-shadow: 0 0 0 2px rgba(0, 255, 65, 0.15);
+        }
+
+        button {
+            background: linear-gradient(180deg, rgba(0, 92, 43, 0.95), rgba(0, 55, 22, 0.95));
+            color: var(--neon-green);
+            border: 1px solid var(--line);
+            padding: 12px 25px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-family: inherit;
+            font-weight: bold;
+            transition: all 0.2s;
+            border-radius: 8px;
+        }
+
+        button:hover {
+            background: #005500;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.4);
+        }
+
+        button:focus-visible {
+            outline: 2px solid var(--neon-green);
+            outline-offset: 2px;
+        }
+
+        .copy-tx {
+            padding: 4px 8px;
+            font-size: 0.78rem;
+            text-transform: none;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+
+        .copy-tx.copied {
+            color: #fff;
+            border-color: #7cff9b;
+        }
+
+        .stratum-bar {
+            background: linear-gradient(135deg, rgba(0, 45, 16, 0.82), rgba(2, 16, 8, 0.95));
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            margin-bottom: 30px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: block;
+            text-decoration: none;
+            color: inherit;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(124, 255, 155, 0.16);
+        }
+
+        #publicStratumUrl {
+            display: inline-block;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            vertical-align: middle;
+        }
+
+        .stratum-bar:hover {
+            background: rgba(0, 50, 0, 0.8);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+
+        .stat-box {
+            background: linear-gradient(180deg, rgba(4, 27, 11, 0.94), rgba(0, 11, 4, 0.94));
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 16px 42px rgba(0, 0, 0, 0.28);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-box::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green);
+        }
+
+        .stat-value {
+            font-size: 2.2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: var(--text);
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .section-title {
+            color: var(--neon-green);
+            border-bottom: 2px solid var(--dark-green);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .scroll-table {
+            max-height: 400px;
+            overflow-y: auto;
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: rgba(0, 10, 0, 0.52);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #003300;
+        }
+
+        th {
+            background: #03270d;
+            color: var(--text);
+            position: sticky;
+            top: 0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+            z-index: 3;
+        }
+
+        tr:hover {
+            background: rgba(0, 255, 65, 0.1);
+        }
+
+        tr.clickable {
+            cursor: pointer;
+        }
+        .stat-note {
+            margin-top: 6px;
+            font-size: 0.7rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            opacity: 0.6;
+        }
+
+        .pulse-panel {
+            background: rgba(0, 15, 0, 0.9);
+            border: 1px solid var(--neon-green);
+            padding: 22px;
+            margin-bottom: 30px;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.08);
+        }
+
+        .pulse-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 12px;
+        }
+
+        .pulse-title {
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.8;
+        }
+
+        .pulse-range {
+            font-size: 0.8rem;
+            opacity: 0.6;
+        }
+
+        .pulse-wrap {
+            position: relative;
+            height: 220px;
+            border: 1px solid rgba(0, 255, 65, 0.4);
+            background: rgba(0, 5, 0, 0.85);
+            overflow: hidden;
+            border-radius: 8px;
+        }
+
+        .pulse-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .pulse-scan {
+            display: none;
+        }
+
+        .pulse-legend {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 0.8rem;
+            opacity: 0.7;
+            gap: 12px;
+        }
+
+        .tab-bar {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0 10px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: rgba(0, 20, 0, 0.8);
+            border: 1px solid var(--neon-green);
+            color: var(--neon-green);
+            padding: 6px 14px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 6px;
+        }
+
+        .tab-btn.active {
+            background: rgba(0, 80, 0, 0.8);
+            box-shadow: 0 0 12px rgba(0, 255, 65, 0.25);
+        }
+
+        .tab-btn:focus-visible {
+            outline: 2px solid var(--neon-green);
+            outline-offset: 2px;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        @keyframes pulseScan {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(185%); }
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: #051a05;
+            margin: 15% auto;
+            padding: 30px;
+            border: 2px solid var(--neon-green);
+            max-width: 600px;
+        }
+
+        .close {
+            float: right;
+            font-size: 28px;
+            cursor: pointer;
+        }
+
+        .code-block {
+            background: #000;
+            border: 1px solid #333;
+            padding: 15px;
+            font-family: monospace;
+            color: #fff;
+            margin: 10px 0;
+            position: relative;
+        }
+
+        .copy-btn {
+            position: absolute;
+            right: 5px;
+            top: 5px;
+            padding: 5px 10px;
+            font-size: 0.8em;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .breadcrumb {
+            cursor: pointer;
+            color: var(--neon-green);
+            text-decoration: underline;
+            opacity: 0.7;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #001100;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #005500;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 16px 0 24px;
+        }
+
+        .status-pill {
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            color: var(--muted);
+            padding: 6px 12px;
+            background: rgba(0, 20, 7, 0.78);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+        }
+
+        .status-pill strong {
+            color: var(--soft-green);
+        }
+
+        @media (max-width: 720px) {
+            .container {
+                width: min(94%, 1200px);
+            }
+
+            .header {
+                margin-top: 24px;
+                gap: 12px;
+            }
+
+            .logo {
+                width: 70px;
+                transform: none;
+            }
+
+            h1 {
+                font-size: 2rem;
+                letter-spacing: 2px;
+            }
+
+            .search-box {
+                flex-direction: column;
+            }
+
+            .stratum-bar {
+                padding: 14px 12px;
+            }
+
+            #publicStratumUrl {
+                display: block;
+                margin: 8px 0 0 0 !important;
+                font-size: clamp(0.9rem, 4vw, 1.05rem) !important;
+                line-height: 1.35;
+            }
+
+            input,
+            button {
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            th,
+            td {
+                padding: 10px 8px;
+                font-size: 0.82rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="/" class="brand-link" aria-label="Hemp0x Pool home">
+                <img src="logo.png" alt="Hemp0x" class="logo">
+                <div>
+                    <h1>Hemp0x Pool</h1>
+                    <p class="tagline">FAST KAWPOW MINING</p>
+                </div>
+            </a>
+        </div>
+
+        <div class="status-row">
+            <span class="status-pill">Network <strong id="networkHeight">--</strong></span>
+            <span class="status-pill">Pool <strong id="poolHealth">Checking</strong></span>
+            <span class="status-pill">Payouts <strong id="payoutWindow">-- confirmations</strong></span>
+        </div>
+
+        <div class="search-box">
+            <input type="text" id="walletInput" placeholder="Enter Wallet Address...">
+            <button onclick="searchMiner()">Track Miner</button>
+            <button id="poolStatsBtn" onclick="showHome()">Pool Stats</button>
+            <div id="lookupMessage" class="lookup-message" role="status" aria-live="polite"></div>
+        </div>
+
+        <a class="stratum-bar" href="/connect.html">
+            <span style="opacity:0.8">STRATUM:</span>
+            <strong id="publicStratumUrl" style="font-size:1.2em; margin-left:10px;">Loading stratum...</strong>
+            <div style="font-size:0.8em; margin-top:5px; color:#aaa;">(Click for Connection Details)</div>
+        </a>
+
+        <!-- HOME VIEW -->
+        <div id="homeView">
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-value" id="miners">0</div>
+                    <div class="stat-label">Miners</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="hashrate">0 MH/s</div>
+                    <div class="stat-label">Pool Hashrate</div>
+                </div>
+                <!-- Box Swap 1: Shares -> Blocks Found -->
+                <div class="stat-box">
+                    <div class="stat-value" id="shares">0</div>
+                    <div class="stat-label">Blocks Found</div>
+                </div>
+                <!-- Swapped: Blocks Paid then Pool Fee -->
+                <div class="stat-box">
+                    <div class="stat-value" id="paidBlocks">0</div>
+                    <div class="stat-label">Blocks Paid</div>
+                    <div class="stat-note" id="paidNote">Payouts after 50 confirmations</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="fees">0%</div>
+                    <div class="stat-label">Pool Fee</div>
+                </div>
+            </div>
+
+            <div class="section-title">
+                <span>ACTIVE MINERS</span>
+                <span style="font-size:0.8em; opacity:0.6;">Sorted by Hashrate</span>
+            </div>
+            <div class="scroll-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Wallet Address</th>
+                            <th>Total Hashrate</th>
+                            <th>Workers</th>
+                            <th>Last Share</th>
+                        </tr>
+                    </thead>
+                    <tbody id="minerList"></tbody>
+                </table>
+            </div>
+
+            <div class="section-title" style="margin-top: 50px;">
+                <span>RECENT PENDING BLOCKS</span>
+                <span style="font-size:0.8em; opacity:0.6;">Pending Verification</span>
+            </div>
+            <div class="scroll-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Height</th>
+                            <th>Hash</th>
+                            <th>Finder</th>
+                            <th>Reward</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="blockList">
+                        <tr>
+                            <td colspan="5" style="text-align:center">No pending blocks.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- MINER DETAILS VIEW -->
+        <div id="minerView" class="hidden">
+            <div style="margin-bottom: 20px;">
+                <span class="breadcrumb" onclick="showHome()">&lt; Back to Pool Stats</span>
+            </div>
+            <h2 id="minerTitle" style="border-left: 4px solid var(--neon-green); padding-left: 15px;">Wallet Stats</h2>
+
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-value" id="mHash">0 MH/s</div>
+                    <div class="stat-label">Current Hashrate</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="mWorkers">0</div>
+                    <div class="stat-label">Active Workers</div>
+                </div>
+                <!-- Phase 5: Financials -->
+                <div class="stat-box">
+                    <div class="stat-value" id="mPaid">0 HEMP</div>
+                    <div class="stat-label">Total Paid</div>
+                    <div class="stat-note" id="mPaidNote">Payouts after 50 confirmations</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="mBlocks">0</div>
+                    <div class="stat-label">Blocks Found</div>
+                </div>
+            </div>
+            <div class="pulse-panel">
+                <div class="pulse-header">
+                    <div class="pulse-title">Hashrate History</div>
+                    <div class="pulse-range" id="pulseRange">Last 4 Hours</div>
+                </div>
+                <div class="pulse-wrap">
+                    <canvas id="hashPulse" class="pulse-canvas"></canvas>
+                    <div class="pulse-scan"></div>
+                </div>
+                <div class="pulse-legend">
+                    <span>Min: <span id="pulseMin">0 MH/s</span></span>
+                    <span>Current: <span id="pulseCurrent">0 MH/s</span></span>
+                    <span>Max: <span id="pulsePeak">0 MH/s</span></span>
+                </div>
+            </div>
+
+            <div class="section-title">WORKER PERFORMANCE</div>
+            <div class="scroll-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Worker Name</th>
+                            <th>Hashrate</th>
+                            <th>Difficulty</th>
+                            <th>Shares</th>
+                            <th>Mode</th>
+                            <th>Last Seen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="workerRows"></tbody>
+                </table>
+            </div>
+
+            <!-- Phase 5: My Found Blocks -->
+            <div class="section-title" style="margin-top: 40px;">ACTIVITY (LAST 100)</div>
+            <div class="tab-bar">
+                <button class="tab-btn active" data-tab="tabAll">All</button>
+                <button class="tab-btn" data-tab="tabBlocks">Blocks Found</button>
+                <button class="tab-btn" data-tab="tabPayouts">Payouts</button>
+            </div>
+            <div class="scroll-table">
+                <div id="tabAll" class="tab-panel active">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Details</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="txRowsAll">
+                            <tr>
+                                <td colspan="5" style="text-align:center">No transactions yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="tabBlocks" class="tab-panel">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Height</th>
+                                <th>Hash</th>
+                                <th>Reward</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="txRowsBlocks">
+                            <tr>
+                                <td colspan="5" style="text-align:center">No blocks found yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="tabPayouts" class="tab-panel">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Txid</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="txRowsPayouts">
+                            <tr>
+                                <td colspan="5" style="text-align:center">No pool payouts yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="margin-top: 50px; text-align: center; opacity: 0.7; font-size: 0.9em; padding-bottom: 20px;">
+        <a href="https://Hemp0x.com" target="_blank" rel="noopener noreferrer"
+            style="color: var(--neon-green); text-decoration: none; border-bottom: 1px dotted var(--neon-green);">Visit
+            Project Homepage: Hemp0x.com</a>
+    </div>
+
+    <script>
+        let currentWallet = null;
+        const fallbackStratumUrl = `stratum+tcp://${window.location.hostname}:3032`;
+        const addressPattern = /^R[1-9A-HJ-NP-Za-km-z]{25,34}$/;
+
+        function escapeHtml(value) {
+            return String(value === undefined || value === null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function setLookupMessage(message, isError = false) {
+            const el = document.getElementById('lookupMessage');
+            if (!el) return;
+            el.textContent = message || '';
+            el.classList.toggle('error', !!isError);
+        }
+
+        function minerHasKnownActivity(stats) {
+            const financials = stats.financials || {};
+            return Number(stats.workerCount || 0) > 0 ||
+                Number(stats.blocksFoundCount || 0) > 0 ||
+                (stats.blocksFound || []).length > 0 ||
+                (stats.ledgerPayouts || []).length > 0 ||
+                (stats.history || []).length > 0 ||
+                Number(financials.totalPaid || 0) > 0 ||
+                Number(financials.pendingShares || 0) > 0;
+        }
+
+        function txDetailHtml(txid, fallback) {
+            if (!txid) return escapeHtml(fallback || 'Payout');
+            const shortTxid = `${txid.substring(0, 12)}...${txid.substring(txid.length - 8)}`;
+            return `<button class="copy-tx" type="button" data-copy="${escapeHtml(txid)}" title="Copy full txid">TX ${escapeHtml(shortTxid)}</button>`;
+        }
+
+        function payoutStatusLabel(status) {
+            const normalized = String(status || '').toLowerCase();
+            if (normalized === 'confirmed') return 'PAID';
+            if (normalized === 'broadcasted') return 'BROADCASTED';
+            return normalized ? normalized.toUpperCase() : '-';
+        }
+
+        function formatActivityTime(timestamp) {
+            if (!timestamp) return '-';
+            return new Date(timestamp).toLocaleString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+        }
+
+        function copyText(value, button) {
+            if (!value) return;
+            const done = () => {
+                if (!button) return;
+                const original = button.textContent;
+                button.textContent = 'Copied';
+                button.classList.add('copied');
+                setTimeout(() => {
+                    button.textContent = original;
+                    button.classList.remove('copied');
+                }, 1200);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(value).then(done).catch(() => {});
+            } else {
+                const input = document.createElement('textarea');
+                input.value = value;
+                input.style.position = 'fixed';
+                input.style.opacity = '0';
+                document.body.appendChild(input);
+                input.select();
+                try { document.execCommand('copy'); done(); } catch (_e) {}
+                input.remove();
+            }
+        }
+
+        async function loadConnectSummary() {
+            const stratumEl = document.getElementById('publicStratumUrl');
+            const healthEl = document.getElementById('poolHealth');
+            const heightEl = document.getElementById('networkHeight');
+            if (stratumEl) stratumEl.textContent = fallbackStratumUrl;
+            try {
+                const res = await fetch('/connect-info');
+                if (!res.ok) throw new Error('connect-info unavailable');
+                const info = await res.json();
+                if (stratumEl) stratumEl.textContent = info.stratum || fallbackStratumUrl;
+                if (healthEl) healthEl.textContent = info.health && info.health.daemonOk ? 'Online' : 'Degraded';
+                if (heightEl) heightEl.textContent = info.health && info.health.blockHeight ? info.health.blockHeight : '--';
+            } catch (e) {
+                if (healthEl) healthEl.textContent = 'Local';
+                if (heightEl) heightEl.textContent = '--';
+            }
+        }
+
+        // --- GLOBAL STATS ---
+        async function updateStats() {
+            try {
+                // Blocks
+                const blocks = await (await fetch('/blocks')).json();
+                const bBody = document.getElementById('blockList');
+                if (blocks.length) {
+                    bBody.innerHTML = blocks.map(b => `
+                        <tr>
+                            <td>${b.height}</td>
+                            <td style="font-family:monospace; opacity:0.8;">${b.hash.substr(0, 24)}...</td>
+                            <td>${b.finder.substr(0, 10)}...</td>
+                            <td style="color:#fff;">${b.reward} HEMP</td>
+                            <td>${formatActivityTime(b.timestamp)}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    bBody.innerHTML = '<tr><td colspan="5" style="text-align:center; opacity:0.5;">No pending blocks.</td></tr>';
+                }
+
+                // Global
+                if (!document.getElementById('homeView').classList.contains('hidden')) {
+                    const stats = await (await fetch('/stats')).json();
+                    document.getElementById('miners').innerText = stats.miners;
+            const hashrateValue = parseFloat(stats.hashrate || 0);
+            const hashrateScale = getScale(Math.max(hashrateValue, 1));
+            document.getElementById('hashrate').innerText = formatScale(hashrateValue, hashrateScale);
+                    document.getElementById('shares').innerText = formatCompact(stats.totalBlocks, 0); // Pool Blocks Found
+                    document.getElementById('paidBlocks').innerText = formatCompact(stats.paidBlocks, 0);
+                    if (stats.blockConfirmations) {
+                        const paidNote = document.getElementById('paidNote');
+                        if (paidNote) paidNote.textContent = `Payouts after ${stats.blockConfirmations} confirmations`;
+                        const payoutWindow = document.getElementById('payoutWindow');
+                        if (payoutWindow) payoutWindow.textContent = `${stats.blockConfirmations} confirmations`;
+                    }
+
+                    const miners = await (await fetch('/miners')).json();
+                    document.getElementById('minerList').innerHTML = miners.map(m => `
+                        <tr class="clickable" onclick="openMiner('${m.wallet}')">
+                            <td style="color:#fff; font-weight:bold;">${m.wallet}</td>
+                            <td>${parseFloat(m.hashrate).toFixed(2)} MH/s</td>
+                            <td>${m.workers}</td>
+                            <td>${Math.floor((Date.now() - m.lastShare) / 1000)}s ago</td>
+                        </tr>
+                    `).join('');
+                }
+
+                // Miner Specific
+                if (currentWallet) {
+                    const minerRes = await fetch(`/miner/${currentWallet}/stats`);
+                    const mStats = await minerRes.json();
+                    if (!minerRes.ok || !minerHasKnownActivity(mStats)) {
+                        showHome();
+                        setLookupMessage(minerRes.status === 400 ? 'Invalid Hemp0x address.' : 'Address not found on this pool yet.', true);
+                        return;
+                    }
+                    document.getElementById('mHash').innerText = (parseFloat(mStats.currentHashrate) || 0).toFixed(2) + ' MH/s';
+                    document.getElementById('mWorkers').innerText = mStats.workerCount || 0;
+
+                    // Phase 5: Financials & Blocks
+                    if (mStats.financials) {
+                        const paidValue = parseFloat(mStats.financials.totalPaid || 0);
+                        document.getElementById('mPaid').innerText = formatCompact(paidValue, 2) + " HEMP";
+                        // Blocks Count
+                        const blockCount = (mStats.blocksFoundCount !== undefined)
+                            ? mStats.blocksFoundCount
+                            : (mStats.blocksFound ? mStats.blocksFound.length : 0);
+                        document.getElementById('mBlocks').innerText = formatCompact(blockCount, 0);
+                    }
+                    if (mStats.blockConfirmations) {
+                        const paidNote = document.getElementById('mPaidNote');
+                        if (paidNote) paidNote.textContent = `Payouts after ${mStats.blockConfirmations} confirmations`;
+                    }
+                    if (mStats.historyHours) {
+                        const pulseRange = document.getElementById('pulseRange');
+                        if (pulseRange) {
+                            const hours = Number(mStats.historyHours) || 1;
+                            pulseRange.textContent = `Last ${hours} Hour${hours === 1 ? '' : 's'}`;
+                        }
+                    }
+
+                    // Transactions (blocks + payouts)
+                    const blocksRaw = (mStats.blocksFound || []);
+                    const blocks = blocksRaw.map(b => ({
+                        type: 'Block Found',
+                        details: `#${b.height} ${b.hash ? b.hash.substring(0, 18) + '...' : ''}`.trim(),
+                        amount: `${formatCompact(b.reward || 0, 2)} HEMP`,
+                        status: (b.status || 'pending').toUpperCase(),
+                        timestamp: b.timestamp
+                    }));
+                    const ledgerPayouts = (mStats.ledgerPayouts || [])
+                        .filter(p => p.batch_status === 'broadcasted' || p.batch_status === 'confirmed')
+                        .map(p => {
+                        const hempAmount = Number(p.amount_sats || 0) / 100000000;
+                        return {
+                            type: 'Pool Payout',
+                            details: txDetailHtml(p.txid, 'Payout'),
+                            amount: `${formatCompact(hempAmount, 2)} HEMP`,
+                            status: payoutStatusLabel(p.batch_status),
+                            timestamp: p.timestamp
+                        };
+                    });
+                    const combined = blocks.concat(ledgerPayouts).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 100);
+                    if (combined.length > 0) {
+                        document.getElementById('txRowsAll').innerHTML = combined.map(row => `
+                             <tr>
+                                <td>${row.type}</td>
+                                <td style="font-family:monospace;">${row.details}</td>
+                                <td style="color:#fff;">${row.amount}</td>
+                                <td>${row.status}</td>
+                                <td>${formatActivityTime(row.timestamp)}</td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        document.getElementById('txRowsAll').innerHTML = '<tr><td colspan="5" style="text-align:center; opacity:0.5;">No transactions yet.</td></tr>';
+                    }
+
+                    if (blocksRaw.length > 0) {
+                        document.getElementById('txRowsBlocks').innerHTML = blocksRaw.map(b => `
+                             <tr>
+                                <td>${b.height || '-'}</td>
+                                <td style="font-family:monospace;">${b.hash ? b.hash.substring(0, 24) + '...' : ''}</td>
+                                <td style="color:#fff;">${formatCompact(b.reward || 0, 2)} HEMP</td>
+                                <td>${(b.status || 'pending').toUpperCase()}</td>
+                                <td>${formatActivityTime(b.timestamp)}</td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        document.getElementById('txRowsBlocks').innerHTML = '<tr><td colspan="5" style="text-align:center; opacity:0.5;">No blocks found yet.</td></tr>';
+                    }
+
+                    const poolPayouts = ledgerPayouts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                    if (poolPayouts.length > 0) {
+                        document.getElementById('txRowsPayouts').innerHTML = poolPayouts.map(p => `
+                             <tr>
+                                <td>${p.type}</td>
+                                <td style="font-family:monospace;">${p.details}</td>
+                                <td style="color:#fff;">${p.amount}</td>
+                                <td>${p.status}</td>
+                                <td>${formatActivityTime(p.timestamp)}</td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        document.getElementById('txRowsPayouts').innerHTML = '<tr><td colspan="5" style="text-align:center; opacity:0.5;">No pool payouts yet.</td></tr>';
+                    }
+                    const workers = await (await fetch(`/miner/${currentWallet}/workers`)).json();
+                    document.getElementById('workerRows').innerHTML = workers.map(w => `
+                        <tr>
+                            <td>${w.id}</td>
+                            <td>${w.hashrate}</td>
+                            <td>${parseFloat(w.difficulty).toFixed(3)}</td>
+                            <td>${w.shares}</td>
+                            <td>${(w.mode || 'pool').toUpperCase()}</td>
+                            <td>${Math.floor((Date.now() - w.lastShare) / 1000)}s ago</td>
+                        </tr>
+                    `).join('');
+                    if (mStats.history) {
+                        updatePulse(mStats);
+                    }
+                }
+
+            } catch (e) { }
+        }
+
+        const pulseCanvas = document.getElementById('hashPulse');
+        const pulseMin = document.getElementById('pulseMin');
+        const pulseCurrent = document.getElementById('pulseCurrent');
+        const pulsePeak = document.getElementById('pulsePeak');
+
+        function calcHistoryHashrate(history) {
+            if (!Array.isArray(history)) return [];
+            return history.map(h => {
+                const diff = parseFloat(h.totalDiff || 0);
+                const hashesPerSecond = (diff * Math.pow(2, 32)) / 60;
+                return hashesPerSecond / 1000000;
+            });
+        }
+
+        function resample(values, targetCount) {
+            if (values.length <= targetCount) return values;
+            const step = values.length / targetCount;
+            const sampled = [];
+            for (let i = 0; i < targetCount; i++) {
+                const start = Math.floor(i * step);
+                const end = Math.max(start + 1, Math.floor((i + 1) * step));
+                const slice = values.slice(start, end);
+                const avg = slice.reduce((sum, v) => sum + v, 0) / slice.length;
+                sampled.push(avg);
+            }
+            return sampled;
+        }
+
+        function getScale(maxValue) {
+            const units = ['MH/s', 'GH/s', 'TH/s', 'PH/s'];
+            let unitIndex = 0;
+            let factor = 1;
+            let value = maxValue;
+            while (value >= 1000 && unitIndex < units.length - 1) {
+                value /= 1000;
+                factor *= 1000;
+                unitIndex++;
+            }
+            return { factor, unit: units[unitIndex] };
+        }
+
+        function formatScale(value, scale) {
+            const scaled = value / scale.factor;
+            const decimals = scaled >= 100 ? 0 : (scaled >= 10 ? 1 : 2);
+            return `${scaled.toFixed(decimals)} ${scale.unit}`;
+        }
+
+        function formatCompact(value, decimalsSmall) {
+            const num = Number(value) || 0;
+            const abs = Math.abs(num);
+            const units = [
+                { value: 1e9, suffix: 'B' },
+                { value: 1e6, suffix: 'M' },
+                { value: 1e3, suffix: 'k' }
+            ];
+            for (const unit of units) {
+                if (abs >= unit.value) {
+                    const scaled = num / unit.value;
+                    const decimals = Math.abs(scaled) >= 100 ? 0 : (Math.abs(scaled) >= 10 ? 1 : 2);
+                    return `${scaled.toFixed(decimals)}${unit.suffix}`;
+                }
+            }
+            if (decimalsSmall === 0) return Math.round(num).toString();
+            return num.toFixed(decimalsSmall).replace(/\.00$/, '');
+        }
+
+        function updatePulse(stats) {
+            if (!pulseCanvas) return;
+            const current = parseFloat(stats.currentHashrate || 0);
+            let values = calcHistoryHashrate(stats.history || []);
+            const width = pulseCanvas.clientWidth;
+            const height = pulseCanvas.clientHeight;
+            if (width === 0 || height === 0) return;
+
+            const targetBars = Math.max(40, Math.floor(width / 6));
+            values = resample(values, targetBars);
+            const maxValue = Math.max(current, ...values, 1);
+            const minValue = Math.min(current, ...values, maxValue);
+            const scale = getScale(maxValue);
+
+            const dpr = window.devicePixelRatio || 1;
+            pulseCanvas.width = width * dpr;
+            pulseCanvas.height = height * dpr;
+            const ctx = pulseCanvas.getContext('2d');
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            ctx.clearRect(0, 0, width, height);
+            ctx.fillStyle = 'rgba(0, 8, 0, 0.85)';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.strokeStyle = 'rgba(0, 255, 65, 0.15)';
+            ctx.lineWidth = 1;
+            for (let i = 1; i <= 4; i++) {
+                const y = (height / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+
+            const points = [];
+            values.forEach((value, i) => {
+                const x = values.length === 1 ? width / 2 : (i / (values.length - 1)) * width;
+                const y = height - ((value / maxValue) * (height - 24)) - 12;
+                points.push({ x, y });
+            });
+            if (points.length > 0) {
+                const area = ctx.createLinearGradient(0, 0, 0, height);
+                area.addColorStop(0, 'rgba(0, 255, 120, 0.28)');
+                area.addColorStop(1, 'rgba(0, 90, 30, 0.02)');
+
+                ctx.beginPath();
+                ctx.moveTo(points[0].x, height);
+                points.forEach((p) => ctx.lineTo(p.x, p.y));
+                ctx.lineTo(points[points.length - 1].x, height);
+                ctx.closePath();
+                ctx.fillStyle = area;
+                ctx.fill();
+
+                ctx.beginPath();
+                points.forEach((p, i) => {
+                    if (i === 0) ctx.moveTo(p.x, p.y);
+                    else ctx.lineTo(p.x, p.y);
+                });
+                ctx.strokeStyle = 'rgba(0, 255, 120, 0.95)';
+                ctx.lineWidth = 2;
+                ctx.shadowColor = 'rgba(0, 255, 65, 0.45)';
+                ctx.shadowBlur = 8;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+
+            ctx.fillStyle = 'rgba(245, 255, 245, 0.92)';
+            ctx.font = '13px ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
+            ctx.textBaseline = 'middle';
+            const labelCount = 5;
+            for (let i = 0; i < labelCount; i++) {
+                const ratio = i / (labelCount - 1);
+                const value = maxValue * ratio;
+                const y = height - ratio * (height - 16) - 8;
+                const label = formatScale(value, scale);
+                ctx.textAlign = 'left';
+                ctx.fillText(label, 6, y);
+                ctx.textAlign = 'right';
+                ctx.fillText(label, width - 6, y);
+            }
+
+            if (pulseMin) pulseMin.textContent = formatScale(minValue, scale);
+            if (pulseCurrent) pulseCurrent.textContent = formatScale(current, scale);
+            if (pulsePeak) pulsePeak.textContent = formatScale(maxValue, scale);
+        }
+        function showHome() {
+            document.getElementById('homeView').classList.remove('hidden');
+            document.getElementById('minerView').classList.add('hidden');
+            currentWallet = null;
+            const poolBtn = document.getElementById('poolStatsBtn');
+            if (poolBtn) poolBtn.style.display = 'none';
+        }
+
+        function openMiner(addr) {
+            setLookupMessage('');
+            currentWallet = addr;
+            document.getElementById('homeView').classList.add('hidden');
+            document.getElementById('minerView').classList.remove('hidden');
+            document.getElementById('minerTitle').innerText = "Wallet: " + addr;
+            const poolBtn = document.getElementById('poolStatsBtn');
+            if (poolBtn) poolBtn.style.display = 'inline-block';
+            updateStats();
+        }
+
+        function searchMiner() {
+            const val = document.getElementById('walletInput').value.trim();
+            if (!val) {
+                setLookupMessage('Enter a Hemp0x wallet address.', true);
+                return;
+            }
+            if (!addressPattern.test(val)) {
+                setLookupMessage('Invalid Hemp0x address.', true);
+                return;
+            }
+            setLookupMessage('Checking address...');
+            fetch(`/miner/${encodeURIComponent(val)}/stats`)
+                .then(async (res) => {
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                        throw new Error(res.status === 400 ? 'Invalid Hemp0x address.' : 'Address not found on this pool yet.');
+                    }
+                    if (!minerHasKnownActivity(data)) {
+                        throw new Error('Address not found on this pool yet.');
+                    }
+                    openMiner(val);
+                })
+                .catch((err) => {
+                    setLookupMessage(err.message || 'Address not found on this pool yet.', true);
+                });
+        }
+
+        document.addEventListener('click', (event) => {
+            const button = event.target.closest('.copy-tx');
+            if (button) copyText(button.dataset.copy, button);
+        });
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+                btn.classList.add('active');
+                const target = document.getElementById(btn.dataset.tab);
+                if (target) target.classList.add('active');
+            });
+        });
+
+        setInterval(updateStats, 3000);
+        showHome();
+        loadConnectSummary();
+        updateStats();
+    </script>
+</body>
+
+</html>
