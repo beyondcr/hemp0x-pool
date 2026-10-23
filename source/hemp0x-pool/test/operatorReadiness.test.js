@@ -156,7 +156,12 @@ describe('operator readiness', () => {
       const src = fs.readFileSync(path.join(CUSTOM_POOL_DIR, 'server.js'), 'utf8');
       assert.ok(src.includes('socket.recentJobs'), 'server.js must track recent stratum jobs per socket');
       assert.ok(src.includes('socket.recentJobs?.get(jobIdStr)'), 'share validation must look up submitted job IDs');
-      assert.ok(src.includes('if (!socket.recentJobs || clean)'), 'clean jobs must reset retained job history');
+      assert.ok(src.includes('rememberJob(socket, job, clean)'), 'job registration must preserve the clean flag');
+      const { rememberJob } = require('../stratumJobs');
+      const socket = {};
+      rememberJob(socket, { jobId: 'old' }, false);
+      rememberJob(socket, { jobId: 'new' }, true);
+      assert.equal(socket.recentJobs.has('old'), false, 'clean jobs must reset retained job history');
     });
   });
 

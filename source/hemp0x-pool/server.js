@@ -14,6 +14,7 @@ const { createRpcClient } = require('./rpcClient');
 const { waitForRpcReady, isWarmupRpcError } = require('./rpcReady');
 const { initAdminRoutes } = require('./adminApi');
 const { installConsoleTimestamps } = require('./logger');
+const { nextJobId, rememberJob } = require('./stratumJobs');
 
 installConsoleTimestamps();
 
@@ -107,7 +108,6 @@ let stats = { shares: 0, hashrate: 0, fees: POOL_FEE };
 let workers = new Map();
 let openSockets = [];
 let currentTemplate = null;
-let currentJobId = 0;
 let extraNonce1Generator = 0;
 let currentNetworkDifficulty = 0;
 let activeShareValidations = 0;
@@ -532,7 +532,6 @@ async function updateBlockTemplate() {
         if (shouldBroadcastTemplateChange(currentTemplate, template)) {
             const newPrev = !currentTemplate || template.previousblockhash !== currentTemplate.previousblockhash;
             currentTemplate = template;
-            currentJobId = (currentJobId + 1) % 10000;
             broadcastJob(newPrev);
         }
     } catch (e) {
@@ -570,11 +569,12 @@ function buildJobForSocket(socket, clean, seedHash) {
     const headerHash = buildHeaderHash(template, merkleRoot, time);
     const jobDifficulty = getEffectiveSocketDifficulty(socket);
     const target = difficultyToTarget(jobDifficulty);
+    const jobId = nextJobId();
 
     const msg = JSON.stringify({
         method: "mining.notify",
         params: [
-            currentJobId.toString(),
+            jobId,
             headerHash,
             seedHash,
             target,
@@ -586,12 +586,12 @@ function buildJobForSocket(socket, clean, seedHash) {
     const worker = workers.get(socket.workerId);
     if (worker && !worker.loggedJob) {
         worker.loggedJob = true;
-        console.log("[JOB] " + socket.workerId + " params=" + JSON.stringify([currentJobId.toString(), headerHash, seedHash, target, clean, height, template.bits]));
+        console.log("[JOB] " + socket.workerId + " params=" + JSON.stringify([jobId, headerHash, seedHash, target, clean, height, template.bits]));
     }
 
     socket.write(msg);
     const job = {
-        jobId: currentJobId,
+        jobId,
         headerHash,
         merkleRoot,
         coinbaseTx: coinbase.tx,
@@ -610,13 +610,7 @@ function buildJobForSocket(socket, clean, seedHash) {
             coinbasevalue: template.coinbasevalue || 0
         }
     };
-    if (!socket.recentJobs || clean) socket.recentJobs = new Map();
-    socket.recentJobs.set(currentJobId.toString(), job);
-    while (socket.recentJobs.size > 8) {
-        const oldest = socket.recentJobs.keys().next().value;
-        socket.recentJobs.delete(oldest);
-    }
-    socket.currentJob = job;
+    rememberJob(socket, job, clean);
 }
 
 function broadcastJob(clean = false) {
