@@ -24,6 +24,10 @@ function createDb() {
 async function setupDb(db) {
   const runner = new MigrationRunner(db, migrationsDir);
   await runner.applyMigrations();
+  await new Promise((resolve, reject) => db.run(`CREATE TABLE IF NOT EXISTS blocks (
+    height INTEGER PRIMARY KEY, hash TEXT, finder TEXT, timestamp INTEGER, reward REAL,
+    status TEXT, paid INTEGER, mode TEXT, payout_address TEXT
+  )`, (error) => error ? reject(error) : resolve()));
   return new Promise((resolve) => {
     db.get('PRAGMA foreign_keys = ON', () => resolve());
   });
@@ -33,6 +37,7 @@ function buildConfig(overrides = {}) {
   return {
     pool: {
       fee: 0.01,
+      wallet: ADDR.miner1,
       walletLabel: '',
       ...(overrides.pool || {}),
     },
@@ -60,6 +65,13 @@ function buildConfig(overrides = {}) {
 }
 
 async function createTestRun(ledger, overrides = {}) {
+  const activeEpoch = await ledger._get('SELECT id FROM payout_epochs WHERE active = 1');
+  if (!activeEpoch) {
+    await ledger._run(
+      'INSERT INTO payout_epochs (start_height, start_hash, wallet_address, created_at, active) VALUES (?, ?, ?, ?, 1)',
+      [0, 'test_epoch_start', ADDR.miner1, Date.now()]
+    );
+  }
   return ledger.createRun({
     blockHeightStart: 1000,
     blockHeightEnd: 1001,
@@ -95,6 +107,26 @@ async function createTestOutputs(ledger, batchId) {
     amountSats: 2475000000,
     category: 'pool',
   });
+  const batch = await ledger.getBatch(batchId);
+  await addTestCredits(ledger, batch.run_id, [2475000000, 2475000000]);
+}
+
+let testCreditHeight = 9000000;
+async function addTestCredits(ledger, runId, amounts) {
+  for (const amount of amounts) {
+    const height = testCreditHeight++;
+    const hash = `test_source_${height}`;
+    await execSql(ledger.db,
+      `INSERT INTO blocks (height, hash, finder, timestamp, reward, status, paid, mode, payout_address)
+       VALUES (?, ?, ?, ?, ?, 'confirmed', 0, 'pool', ?)`,
+      [height, hash, ADDR.miner1, Date.now(), amount / 100000000, ADDR.miner1]
+    );
+    const credit = await ledger.createBlockCredit({
+      runId, height, hash, finder: ADDR.miner1, mode: 'pool',
+      rewardSats: amount, feeDeductedSats: 0, finderBonusSats: 0, remainderSats: amount, minerCount: 1,
+    });
+    await ledger.createMinerCredit({ blockCreditId: credit.id, miner: ADDR.miner1, category: 'pool', amountSats: amount });
+  }
 }
 
 function liveRpc(handler) {
@@ -609,6 +641,88 @@ describe('PayoutWorker', () => {
       assert.equal(isAmbiguousBroadcastError(new Error('Work queue depth exceeded')), false);
     });
 
+    it('does not resend when sendmany succeeds but broadcast persistence fails', async () => {
+      const config = buildConfig({
+        payout: { dryRun: false },
+        automation: { routinePayoutEnabled: true, payoutBroadcastEnabled: true },
+      });
+      let sendmanyCalls = 0;
+      const worker = new PayoutWorker({
+        db, ledger, config,
+        rpc: liveRpc(async (method) => {
+          if (method === 'sendmany') {
+            sendmanyCalls++;
+            return 'accepted_txid_persist_failure';
+          }
+          return null;
+        }),
+      });
+      const run = await createTestRun(ledger);
+      const batch = await createTestBatch(ledger, run.id);
+      await createTestOutputs(ledger, batch.id);
+      const updateBatchStatus = ledger.updateBatchStatus.bind(ledger);
+      ledger.updateBatchStatus = async (batchId, status, options) => {
+        if (status === 'broadcasted') throw new Error('simulated database write failure');
+        return updateBatchStatus(batchId, status, options);
+      };
+
+      const first = await worker.processRun(run.id);
+      assert.equal(first.processed, true);
+      const unresolved = await ledger.getBatch(batch.id);
+      assert.equal(unresolved.status, 'broadcast_unknown');
+      assert.equal(unresolved.txid, 'accepted_txid_persist_failure');
+
+      const second = await worker.processRun(run.id);
+      assert.equal(second.reason, 'unresolved_broadcast_outcome');
+      assert.equal(sendmanyCalls, 1);
+      ledger.updateBatchStatus = updateBatchStatus;
+    });
+
+    it('finalizes source blocks at confirmation after broadcast event persistence fails', async () => {
+      const config = buildConfig({
+        payout: { dryRun: false, blockConfirmations: 1 },
+        automation: { routinePayoutEnabled: true, payoutBroadcastEnabled: true },
+      });
+      let sendmanyCalls = 0;
+      const worker = new PayoutWorker({
+        db, ledger, config,
+        rpc: liveRpc(async (method) => {
+          if (method === 'sendmany') {
+            sendmanyCalls++;
+            return 'broadcasted_event_persist_failure';
+          }
+          if (method === 'gettransaction') return { confirmations: 1 };
+          return null;
+        }),
+      });
+      const run = await createTestRun(ledger);
+      const batch = await createTestBatch(ledger, run.id);
+      await createTestOutputs(ledger, batch.id);
+      const createEvent = ledger.createEvent.bind(ledger);
+      let failBroadcastEvent = true;
+      ledger.createEvent = async (event) => {
+        if (failBroadcastEvent && event.eventType === 'broadcasted') {
+          failBroadcastEvent = false;
+          throw new Error('simulated broadcast event write failure');
+        }
+        return createEvent(event);
+      };
+
+      await worker.processRun(run.id);
+      assert.equal((await ledger.getBatch(batch.id)).status, 'broadcasted');
+      const sourceBlocks = await ledger.getBlockCreditsForRun(run.id);
+      const confirmation = await worker.confirmBroadcastedBatches(run.id);
+      assert.equal(confirmation.results[0].confirmed, true);
+      assert.equal((await ledger.getRun(run.id)).status, 'confirmed');
+      for (const source of sourceBlocks) {
+        const block = await new Promise((resolve, reject) => db.get('SELECT paid, status FROM blocks WHERE height = ?', [source.height], (error, row) => error ? reject(error) : resolve(row)));
+        assert.equal(block.paid, 1);
+        assert.equal(block.status, 'paid');
+      }
+      assert.equal(sendmanyCalls, 1);
+      ledger.createEvent = createEvent;
+    });
+
     it('keeps partially broadcast runs active instead of failing and replanning', async () => {
       const config = buildConfig({
         payout: { dryRun: false },
@@ -627,13 +741,14 @@ describe('PayoutWorker', () => {
         }),
       });
 
-      const run = await createTestRun(ledger);
+      const run = await createTestRun(ledger, { netAmountSats: 5950000000 });
       const b0 = await createTestBatch(ledger, run.id, { batchIndex: 0 });
       const b1 = await createTestBatch(ledger, run.id, { batchIndex: 1, totalAmountSats: 1000000000, outputCount: 1 });
       await createTestOutputs(ledger, b0.id);
       await ledger.createBatchOutput({
         batchId: b1.id, address: ADDR.miner1, amountSats: 1000000000, category: 'pool',
       });
+      await addTestCredits(ledger, run.id, [1000000000]);
 
       const result = await worker.processRun(run.id);
       assert.equal(result.processed, true);
@@ -645,7 +760,7 @@ describe('PayoutWorker', () => {
       assert.equal(updatedRun.status, 'broadcasting');
       assert.equal(updatedB0.status, 'broadcasted');
       assert.equal(updatedB0.txid, 'partial_txid_1');
-      assert.equal(updatedB1.status, 'created');
+      assert.equal(updatedB1.status, 'broadcast_unknown');
       assert.match(updatedB1.error, /Work queue depth exceeded/);
 
       const events = await ledger.getEventsForRun(run.id);
@@ -666,13 +781,14 @@ describe('PayoutWorker', () => {
         }),
       });
 
-      const run = await createTestRun(ledger);
+      const run = await createTestRun(ledger, { netAmountSats: 5950000000 });
       const b0 = await createTestBatch(ledger, run.id, { batchIndex: 0 });
       const b1 = await createTestBatch(ledger, run.id, { batchIndex: 1, totalAmountSats: 1000000000, outputCount: 1 });
       await createTestOutputs(ledger, b0.id);
       await ledger.createBatchOutput({
         batchId: b1.id, address: ADDR.miner1, amountSats: 1000000000, category: 'pool',
       });
+      await addTestCredits(ledger, run.id, [1000000000]);
 
       const result = await worker.processRun(run.id);
       assert.equal(result.processed, true);
@@ -698,8 +814,8 @@ describe('PayoutWorker', () => {
       await execSql(db, 'DELETE FROM blocks WHERE height = ?', [7654321]);
       await execSql(
         db,
-        "INSERT INTO blocks (height, hash, finder, timestamp, reward, status, paid, mode) VALUES (?, ?, ?, ?, ?, 'confirmed', 0, 'pool')",
-        [7654321, 'source_hash_7654321', ADDR.miner1, Date.now(), 50]
+        "INSERT INTO blocks (height, hash, finder, timestamp, reward, status, paid, mode, payout_address) VALUES (?, ?, ?, ?, ?, 'confirmed', 0, 'pool', ?)",
+        [7654321, 'source_hash_7654321', ADDR.miner1, Date.now(), 1, ADDR.miner1]
       );
 
       const config = buildConfig({
@@ -714,20 +830,22 @@ describe('PayoutWorker', () => {
         }),
       });
 
-      const run = await createTestRun(ledger, { blockHeightStart: 7654321, blockHeightEnd: 7654321 });
+      const run = await createTestRun(ledger, { blockHeightStart: 7654321, blockHeightEnd: 7654321, netAmountSats: 100000000 });
       await ledger.createBlockCredit({
         runId: run.id,
         height: 7654321,
         hash: 'source_hash_7654321',
         finder: ADDR.miner1,
         mode: 'pool',
-        rewardSats: 5000000000,
+        rewardSats: 100000000,
         feeDeductedSats: 0,
         finderBonusSats: 0,
-        remainderSats: 5000000000,
+        remainderSats: 100000000,
         minerCount: 1,
       });
       const batch = await createTestBatch(ledger, run.id, { totalAmountSats: 100000000, outputCount: 1 });
+      const sourceCredit = await ledger.getBlockCreditsForRun(run.id);
+      await ledger.createMinerCredit({ blockCreditId: sourceCredit[0].id, miner: ADDR.miner1, category: 'pool', amountSats: 100000000 });
       await ledger.createBatchOutput({
         batchId: batch.id, address: ADDR.miner1, amountSats: 100000000, category: 'pool',
       });
@@ -815,7 +933,7 @@ describe('PayoutWorker', () => {
         },
       });
 
-      const run = await createTestRun(ledger);
+      const run = await createTestRun(ledger, { netAmountSats: 9900000000 });
       const firstBatch = await createTestBatch(ledger, run.id, { batchIndex: 0 });
       const secondBatch = await createTestBatch(ledger, run.id, { batchIndex: 1 });
       await createTestOutputs(ledger, firstBatch.id);

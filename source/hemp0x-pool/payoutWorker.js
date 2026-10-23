@@ -14,6 +14,11 @@ function isAmbiguousBroadcastError(err) {
   return /timed out|timeout|etimedout|econnreset|econnrefused|socket hang up|connection (?:reset|closed|aborted|lost)/i.test(message);
 }
 
+function isDefinitiveBroadcastRejection(err) {
+  const message = String(err?.message || err || '').toLowerCase();
+  return /insufficient funds|insufficient fee|invalid (?:address|amount|parameter)|amount too small|transaction too large|wallet (?:is locked|does not exist)|mandatory-script-verify-flag-failed/.test(message);
+}
+
 class PayoutWorker {
   /**
    * @param {object} options
@@ -241,24 +246,162 @@ class PayoutWorker {
     let totalPendingSats = 0;
     const invalidOutputs = [];
     const batchDetails = [];
+    let runOutputTotalSats = 0;
+    const fail = async (error, detail) => {
+      await this.ledger.createEvent({ runId, eventType: 'worker_error', detail });
+      return { ok: false, error, detail };
+    };
 
     for (const batch of pendingBatches) {
       const outputs = await this.ledger.getBatchOutputs(batch.id);
       let batchTotalSats = 0;
+      const addresses = new Set();
       for (const out of outputs) {
-        batchTotalSats += Number(out.amount_sats || 0);
+        const amount = Number(out.amount_sats);
+        if (!Number.isSafeInteger(amount) || amount <= 0 || !Number.isSafeInteger(batchTotalSats + amount)) {
+          return fail('invalid_payout_amount', `Unsafe or invalid amount in payout batch ${batch.id}`);
+        }
+        batchTotalSats += amount;
+        if (addresses.has(out.address)) {
+          return fail('duplicate_payout_recipient', `Duplicate recipient in payout batch ${batch.id}: ${out.address}`);
+        }
+        addresses.add(out.address);
         if (!isRoutableAddress(out.address)) {
           invalidOutputs.push(out.address);
         }
       }
+      if (outputs.length === 0 || !Number.isSafeInteger(Number(batch.total_amount_sats)) || batchTotalSats !== Number(batch.total_amount_sats)) {
+        return fail('batch_total_mismatch', `Batch ${batch.id} output total ${batchTotalSats} does not match recorded total ${batch.total_amount_sats}`);
+      }
+      if (!Number.isSafeInteger(totalPendingSats + batchTotalSats)) {
+        return fail('invalid_payout_amount', 'Aggregate payout output total exceeds safe integer range');
+      }
       totalPendingSats += batchTotalSats;
       batchDetails.push({ batch, outputs, totalSats: batchTotalSats });
+    }
+
+    const allBatches = await this.ledger.getBatchesForRun(runId);
+    for (const batch of allBatches) {
+      if (pendingBatches.some((pending) => pending.id === batch.id)) {
+        runOutputTotalSats += batchDetails.find((detail) => detail.batch.id === batch.id).totalSats;
+        continue;
+      }
+      const outputs = await this.ledger.getBatchOutputs(batch.id);
+      let total = 0;
+      const recipients = new Set();
+      for (const output of outputs) {
+        const amount = Number(output.amount_sats);
+        if (!Number.isSafeInteger(amount) || amount <= 0 || !Number.isSafeInteger(total + amount)) {
+          return fail('invalid_payout_amount', `Unsafe or invalid amount in payout batch ${batch.id}`);
+        }
+        if (recipients.has(output.address)) return fail('duplicate_payout_recipient', `Duplicate recipient in payout batch ${batch.id}: ${output.address}`);
+        recipients.add(output.address);
+        total += amount;
+      }
+      if (!outputs.length || total !== Number(batch.total_amount_sats)) {
+        return fail('batch_total_mismatch', `Batch ${batch.id} output total ${total} does not match recorded total ${batch.total_amount_sats}`);
+      }
+      runOutputTotalSats += total;
+      if (!Number.isSafeInteger(runOutputTotalSats)) return fail('invalid_payout_amount', 'Aggregate payout output total exceeds safe integer range');
     }
 
     if (invalidOutputs.length > 0) {
       const detail = `Invalid payout output address(es): ${invalidOutputs.join(', ')}`;
       await this.ledger.createEvent({ runId, eventType: 'worker_error', detail });
       return { ok: false, error: 'invalid_output_address', detail };
+    }
+
+    const blockCredits = await this.ledger.getBlockCreditsForRun(runId);
+    if (blockCredits.length === 0) {
+      return fail('source_credits_missing', 'Payout run has no source block credits');
+    }
+    {
+      const creditIds = new Set(blockCredits.map((credit) => credit.id));
+      const minerCredits = await this.ledger.getMinerCreditsForRun(runId);
+      const creditedBlockIds = new Set(minerCredits.map((credit) => credit.block_credit_id));
+      if (minerCredits.length === 0 || blockCredits.some((credit) => !creditedBlockIds.has(credit.id)) || minerCredits.some((credit) => !creditIds.has(credit.block_credit_id))) {
+        return fail('source_credits_missing', 'Source block credits have no verifiable miner credits');
+      }
+      let sourceTotalSats = 0;
+      for (const credit of minerCredits) {
+        const amount = Number(credit.amount_sats);
+        if (!Number.isSafeInteger(amount) || amount < 0 || !Number.isSafeInteger(sourceTotalSats + amount)) {
+          return fail('invalid_source_credit', 'Source miner credits contain an unsafe amount');
+        }
+        sourceTotalSats += amount;
+      }
+      const run = await this.ledger.getRun(runId);
+      let blockNetTotalSats = 0;
+      for (const blockCredit of blockCredits) {
+        const reward = Number(blockCredit.reward_sats);
+        const fee = Number(blockCredit.fee_deducted_sats);
+        const bonus = Number(blockCredit.finder_bonus_sats);
+        const remainder = Number(blockCredit.remainder_sats);
+        const net = reward - fee;
+        const blockMinerTotal = minerCredits
+          .filter((credit) => credit.block_credit_id === blockCredit.id)
+          .reduce((sum, credit) => sum + Number(credit.amount_sats), 0);
+        if (![reward, fee, bonus, remainder, net, blockMinerTotal].every(Number.isSafeInteger) || reward < 0 || fee < 0 || net < 0 || bonus < 0 || remainder < 0 || bonus + remainder !== net || blockMinerTotal !== net) {
+          return fail('source_block_conservation_mismatch', `Source block credit ${blockCredit.id} does not conserve reward, deductions, and miner credits`);
+        }
+        blockNetTotalSats += net;
+        if (!Number.isSafeInteger(blockNetTotalSats)) {
+          return fail('invalid_source_credit', 'Aggregate source block net reward exceeds safe integer range');
+        }
+      }
+      if (!Number.isSafeInteger(Number(run.net_amount_sats)) || runOutputTotalSats > sourceTotalSats || sourceTotalSats !== blockNetTotalSats || sourceTotalSats !== Number(run.net_amount_sats)) {
+        return fail('source_total_mismatch', `Run output total ${runOutputTotalSats}, source net rewards ${blockNetTotalSats}, miner credits ${sourceTotalSats}, and run net ${run.net_amount_sats} do not conserve`);
+      }
+      const heights = blockCredits.map((credit) => Number(credit.height));
+      if (heights.some((height) => !Number.isSafeInteger(height))) {
+        return fail('invalid_source_block', 'Source credits contain an unsafe block height');
+      }
+      if (heights.length > 0) {
+        if (!(await this._tableExists('payout_epochs'))) {
+          return fail('payout_epoch_required', 'Live payouts require the payout epoch schema and an active epoch');
+        }
+        const epoch = await this._get('SELECT * FROM payout_epochs WHERE active = 1');
+        if (!epoch) {
+          return fail('payout_epoch_required', 'Live payouts require an active payout epoch');
+        }
+        {
+            const wallet = this.config.pool?.wallet || this.config.pool?.walletAddress;
+            if (!wallet || epoch.wallet_address !== wallet) {
+              return fail('payout_epoch_wallet_mismatch', 'Active payout epoch wallet does not match configured wallet');
+            }
+            for (const credit of blockCredits) {
+              const height = Number(credit.height);
+              if (height <= Number(epoch.start_height)) {
+                return fail('payout_epoch_height_mismatch', `Source height ${height} is not after active epoch start ${epoch.start_height}`);
+              }
+              const source = await this._get('SELECT height, hash, reward, mode, payout_address, status FROM blocks WHERE height = ?', [height]);
+              const sats = Math.round(Number(source?.reward) * SATS_PER_HEMP);
+              if (!source || source.hash !== credit.hash || source.mode !== 'pool' || source.payout_address !== epoch.wallet_address || !['confirmed', 'paid'].includes(source.status) || !Number.isSafeInteger(sats) || Number(credit.reward_sats) !== sats) {
+                return fail('payout_epoch_source_mismatch', `Source block ${height} does not match active payout epoch requirements`);
+              }
+            }
+            for (const credit of blockCredits) {
+              const claim = await this._get(
+                'SELECT height, hash, run_id, epoch_id FROM payout_source_claims WHERE height = ?',
+                [credit.height]
+              );
+              if (!claim || Number(claim.run_id) !== Number(runId) || claim.hash !== credit.hash || Number(claim.epoch_id) !== Number(epoch.id)) {
+                return fail('payout_epoch_claim_mismatch', `Source claim for height ${credit.height} does not match this run, hash, and active epoch`);
+              }
+            }
+        }
+        const placeholders = heights.map(() => '?').join(',');
+        const conflicts = await this._all(
+          `SELECT DISTINCT pbc.height, pb.run_id FROM payout_block_credits pbc
+           JOIN payout_batches pb ON pb.run_id = pbc.run_id
+           WHERE pbc.height IN (${placeholders}) AND pbc.run_id != ?
+             AND pb.status IN ('broadcasting', 'broadcast_unknown', 'broadcasted', 'confirmed')`,
+          [...heights, runId]
+        );
+        if (conflicts.length > 0) {
+          return fail('source_block_in_flight', `Source block ${conflicts[0].height} has payout activity in run ${conflicts[0].run_id}`);
+        }
+      }
     }
 
     // Label-scoped getbalance is not a reliable spendable-wallet total on
@@ -377,6 +520,10 @@ class PayoutWorker {
    */
   async processRun(runId) {
     const status = this.getAutomationStatus();
+    if (status.liveCapable) {
+      // The claim must survive a host crash before the external wallet send.
+      await this._run('PRAGMA synchronous = FULL');
+    }
 
     const acquired = await this.acquireRunLock(runId);
     if (!acquired) {
@@ -467,8 +614,18 @@ class PayoutWorker {
 
         for (const batch of batchesToBroadcast) {
           let sendmanyStarted = false;
+          let sendmanyReturned = false;
+          let broadcastTxid = null;
           try {
-            await this.ledger.updateBatchStatus(batch.id, 'broadcasting');
+            const claimed = await this._run(
+              "UPDATE payout_batches SET status = 'broadcasting' WHERE id = ? AND status = 'created'",
+              [batch.id]
+            );
+            if (claimed.changes !== 1) {
+              allOk = false;
+              batchResults.push({ batchId: batch.id, batchIndex: batch.batch_index, processed: false, error: 'Batch was not claimable from created status' });
+              continue;
+            }
             await this.ledger.createEvent({
               runId,
               batchId: batch.id,
@@ -491,6 +648,11 @@ class PayoutWorker {
 
             sendmanyStarted = true;
             const txid = await this.rpc('sendmany', [walletLabel, payments]);
+            sendmanyReturned = true;
+            broadcastTxid = txid;
+            if (typeof txid !== 'string' || txid.trim().length === 0) {
+              throw new Error('sendmany returned an invalid transaction id');
+            }
 
             await this.ledger.updateBatchStatus(batch.id, 'broadcasted', { txid });
             await this.ledger.createEvent({
@@ -503,18 +665,35 @@ class PayoutWorker {
             batchResults.push({ batchId: batch.id, batchIndex: batch.batch_index, processed: true, txid });
           } catch (err) {
             const sanitized = this._sanitizeError(err);
-            const ambiguous = sendmanyStarted && isAmbiguousBroadcastError(err);
+            const ambiguous = sendmanyStarted && !isDefinitiveBroadcastRejection(err);
             const nextStatus = ambiguous ? 'broadcast_unknown' : 'created';
-            const detail = ambiguous
-              ? `Broadcast outcome uncertain; automatic retry disabled: ${sanitized}`
-              : sanitized;
-            await this.ledger.updateBatchStatus(batch.id, nextStatus, { error: detail });
-            await this.ledger.createEvent({
-              runId,
-              batchId: batch.id,
-              eventType: ambiguous ? 'broadcast_unknown' : 'broadcast_failed',
-              detail,
-            });
+            const detail = ambiguous ? `Broadcast outcome uncertain; automatic retry disabled: ${sanitized}` : sanitized;
+            if (sendmanyReturned) {
+              try {
+                await this._run(
+                  "UPDATE payout_batches SET status = 'broadcast_unknown', txid = ?, error = ? WHERE id = ? AND status = 'broadcasting'",
+                  [typeof broadcastTxid === 'string' && broadcastTxid.trim() ? broadcastTxid : null, detail, batch.id]
+                );
+              } catch (_persistErr) {
+                // Leave broadcasting in place when the database cannot record uncertainty.
+              }
+            } else {
+              try {
+                await this.ledger.updateBatchStatus(batch.id, nextStatus, { error: detail });
+              } catch (_persistErr) {
+                // An unresolved broadcasting status blocks any automatic retry.
+              }
+            }
+            try {
+              await this.ledger.createEvent({
+                runId,
+                batchId: batch.id,
+                eventType: ambiguous ? 'broadcast_unknown' : 'broadcast_failed',
+                detail: sendmanyReturned && broadcastTxid ? `${detail}; txid=${broadcastTxid}` : detail,
+              });
+            } catch (_eventErr) {
+              // Batch status is the retry barrier; event persistence is secondary.
+            }
             batchResults.push({ batchId: batch.id, batchIndex: batch.batch_index, processed: false, error: detail });
             allOk = false;
             if (ambiguous) break;
@@ -662,6 +841,7 @@ class PayoutWorker {
       const runBatches = await this.ledger.getBatchesForRun(rid);
       const allConfirmed = runBatches.every((b) => b.status === 'confirmed');
       if (allConfirmed) {
+        await this._markRunSourcesPaid(rid);
         await this._markRunSharesPaidAfterConfirmation(rid);
         await this.ledger.updateRunStatus(rid, 'confirmed');
         await this.ledger.createEvent({

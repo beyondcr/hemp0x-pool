@@ -54,7 +54,7 @@ describe('MigrationRunner', () => {
             });
         });
 
-        assert.equal(rows[0].cnt, 4);
+        assert.equal(rows[0].cnt, runner.getMigrationFiles().filter(file => runner.parseVersion(file)).length);
     });
 
     it('creates payout ledger tables and indexes', async () => {

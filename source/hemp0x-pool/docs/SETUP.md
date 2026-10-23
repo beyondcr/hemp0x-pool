@@ -128,6 +128,12 @@ HTTPS and a reverse proxy with rate limiting, or keep the dashboard local.
 
 ## Payout Worker
 
+Before enabling live payouts, initialize the receiving wallet's accounting
+boundary as described in [Payout Accounting Boundaries](PAYOUT_EPOCHS.md).
+For a fresh pool, do this before connecting miners. The initialization command
+archives existing payout obligations, so review that guide before using it on
+an established pool.
+
 The ledger-backed payout worker plans payouts, records each run, broadcasts when live gates are enabled, and confirms broadcasted batches. Start with dry-run planning, then enable live mode only after RPC, wallet, and backup checks pass.
 
 ```bash

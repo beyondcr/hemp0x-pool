@@ -8,6 +8,7 @@ const { planPayout } = require('../payoutPlanner');
 const { createPacedRpc } = require('../payoutRpcPacing');
 const { MigrationRunner } = require('../migrations');
 const path = require('path');
+const { getActivePayoutEpoch } = require('../payoutEpoch');
 
 const LIVE_CONFIRM_VALUE = 'I_UNDERSTAND_THIS_BROADCASTS_REAL_PAYOUTS';
 
@@ -114,7 +115,14 @@ async function createPayoutPlan({ db, ledger, config, maxBlocks }) {
     };
   }
 
-  const blocks = await db.getUnpaidConfirmedBlocks();
+  const epoch = await getActivePayoutEpoch(ledger.db);
+  if (epoch && epoch.wallet_address !== config.pool.wallet) {
+    throw new Error('Pool wallet does not match the active payout epoch');
+  }
+  const unpaidBlocks = await db.getUnpaidConfirmedBlocks();
+  const blocks = epoch
+    ? unpaidBlocks.filter((block) => block.height > epoch.start_height)
+    : unpaidBlocks;
   const limitedBlocks = blocks.slice(0, maxBlocks);
   if (limitedBlocks.length === 0) {
     return {
@@ -208,6 +216,9 @@ async function main() {
   const rawDb = db.getConnection();
   const migrationsDir = path.resolve(__dirname, '..', 'migrations');
   await new MigrationRunner(rawDb, migrationsDir).applyMigrations();
+  if (args.live && !(await getActivePayoutEpoch(rawDb))) {
+    throw new Error('Live payouts require an initialized payout epoch; see docs/PAYOUT_EPOCHS.md');
+  }
   const ledger = new PayoutLedger(rawDb);
 
   if (args.plan) {
