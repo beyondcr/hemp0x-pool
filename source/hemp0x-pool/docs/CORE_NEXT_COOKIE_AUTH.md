@@ -38,21 +38,26 @@ as a root-owned file. Adjust paths and group names for your installation:
 sudo install -o root -g root -m 755 scripts/ensure-rpc-cookie-access.py /usr/local/sbin/ensure-rpc-cookie-access
 ```
 
-Example daemon systemd drop-in:
+Use the independent permission service and timer below. Do not block daemon
+startup on authenticated RPC readiness: loading a large wallet can take several
+minutes. A failing readiness hook causes systemd to stop the daemon before it
+finishes loading and can create an endless restart loop.
+
+If an older installation has an RPC readiness hook, remove that hook with this
+daemon systemd drop-in:
 
 ```ini
 [Service]
 ExecStartPost=
-ExecStartPost=/usr/local/sbin/ensure-rpc-cookie-access --cookie /var/lib/hemp0x-pool/rpc.cookie --group hemp0xpool --wait-rpc /usr/local/bin/hemp0x-cli -conf=/etc/hemp0x/hemp0x.conf -datadir=/var/lib/hemp0x getblockcount
 TimeoutStartSec=180
+TimeoutStopSec=600
 ```
 
-The helper requires Python 3. Its CLI command must authenticate as the daemon
-owner using the same configuration and data directory. Waiting for authenticated
-RPC avoids repairing a stale cookie just before the daemon replaces it. Checking
-only whether the file exists is insufficient after an unclean shutdown.
+The helper requires Python 3. Repeated permission checks handle a cookie replaced
+after an earlier check; file existence alone does not mean RPC is ready. Pool
+processes must wait for RPC independently without stopping the daemon.
 
-For recovery after a later cookie replacement, install this additional service
+For cookie creation and later cookie replacement, install this service
 as `/etc/systemd/system/hemp0x-cookie-access.service`:
 
 ```ini
@@ -89,9 +94,10 @@ sudo systemctl enable --now hemp0x-cookie-access.timer
 sudo systemctl start hemp0x-cookie-access.service
 ```
 
-The startup hook takes effect at the next planned daemon restart. Verify the
-helper and CLI paths before installing it; a failed startup hook fails the daemon
-unit. The helper changes only cookie metadata, never its contents, and refuses
+Removing an existing startup hook takes effect at the next planned daemon
+restart. A missing cookie can cause an individual timer check to fail during
+startup; the timer retries without stopping the daemon. Verify that it succeeds
+after the cookie is created. The helper changes only cookie metadata, never its contents, and refuses
 symbolic links and cookies owned by another user.
 
 ## Pool Config
